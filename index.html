@@ -377,6 +377,8 @@ header.top .brand .bsep{width:1px;height:28px;background:rgba(255,255,255,.35)}
 .stl-s{display:flex;gap:10px;align-items:flex-start;margin-top:8px}.lvdot{width:12px;height:12px;border-radius:50%;margin-top:4px;flex:none}
 @media(max-width:700px){.kpis{grid-template-columns:1fr 1fr}}
 
+.cfutag{display:block;margin-top:3px;font-size:11px;font-weight:700;color:var(--blue)}
+
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-180.png">
@@ -638,15 +640,15 @@ function loadLogo(file){return new Promise((res,rej)=>{if(!file||!/^image\//.tes
    ===================================================================== */
 const TALLY = [
  {g:"Opportunities to respond", items:[
-  {k:"coldCall", n:"Cold call", d:"teacher chooses a non-volunteer", otr:1},
+  {k:"coldCall", n:"Cold call", d:"teacher chooses a non-volunteer", otr:1, cfu:"sample"},
   {k:"volunteer", n:"Volunteer / hands up", d:"or calling out", otr:1},
   {k:"choral", n:"Choral response", d:"whole class", otr:1, whole:1},
-  {k:"mwb", n:"Mini whiteboards", d:"show-me, whole class", otr:1, whole:1},
+  {k:"mwb", n:"Mini whiteboards", d:"show-me, whole class", otr:1, whole:1, cfu:"whole"},
   {k:"turnTalk", n:"Turn and talk", d:"all pairs", otr:1, whole:1},
-  {k:"signals", n:"Hand signals", d:"thumbs, fingers, cards", otr:1, whole:1},
-  {k:"writes", n:"Everybody writes", d:"all students write", otr:1, whole:1}]},
+  {k:"signals", n:"Hand signals", d:"thumbs, fingers, cards", otr:1, whole:1, cfu:"whole"},
+  {k:"writes", n:"Everybody writes", d:"all students write", otr:1, whole:1, cfu:"whole"}]},
  {g:"Checking for understanding", items:[
-  {k:"check", n:"Whole-class check", d:"evidence from every student (boards, hinge, signals)"},
+  {k:"check", n:"Other whole-class check", d:"hinge question, exit ticket – anything not tallied above"},
   {k:"selfreport", n:"“Does everyone understand?”", d:"self-report, nods, thumbs-up confidence"},
   {k:"monitor", n:"Monitoring work", d:"teacher checks students’ work during practice"}]},
  {g:"Teacher interactions", items:[
@@ -668,7 +670,7 @@ function obsStats(o){
  let gap=0,prev=0;times.concat([secs]).forEach(t=>{gap=Math.max(gap,t-prev);prev=t});
  const rs=o.roster.list.length, rhit=o.roster.list.filter((_,i)=>(o.roster.hits[i]||0)>0).length;
  return {secs,mins,otr,whole,indiv,otrPerMin:mins>0?otr/mins:0,volPct:indiv?c("volunteer")/indiv:null,
-  gapMins:gap/60,checks:c("check"),self:c("selfreport"),monitor:c("monitor"),pos:c("positive"),cor:c("corrective"),
+  gapMins:gap/60,checksWhole:c("check")+TALLY_ITEMS.filter(i=>i.cfu==="whole").reduce((a,i)=>a+c(i.k),0),checksSample:TALLY_ITEMS.filter(i=>i.cfu==="sample").reduce((a,i)=>a+c(i.k),0),checks:c("check")+TALLY_ITEMS.filter(i=>i.cfu).reduce((a,i)=>a+c(i.k),0),self:c("selfreport"),monitor:c("monitor"),pos:c("positive"),cor:c("corrective"),
   rosterSize:rs,responded:rhit,coverage:rs?rhit/rs:null};
 }
 function obsSuggest(o){
@@ -678,7 +680,7 @@ function obsSuggest(o){
  if(s.coverage!==null&&s.coverage<0.7&&s.mins>=10)add("o1",`${s.responded} of ${s.rosterSize} students responded individually`);
  if(s.mins>=10&&s.otrPerMin<0.5)add("o2",`${s.otrPerMin.toFixed(1)} opportunities to respond per minute`);
  if(s.gapMins>=6)add("o2",`longest stretch without a student response: ${Math.round(s.gapMins)} min`);
- if(s.self>0&&s.checks===0)add("c1",`“Does everyone understand?” used ${s.self}× with no whole-class check`);
+ if(s.self>0&&s.checksWhole===0)add("c1",`“Does everyone understand?” used ${s.self}× with no whole-class check`);
  else if(s.mins>=15&&s.checks===0)add("c1","no whole-class check for understanding recorded");
  if(s.cor>=3&&s.cor>s.pos)add("s4",`${s.pos} positive vs ${s.cor} corrective interactions`);
  if(s.mins>=15&&s.whole===0)add("o2","no whole-class responses (choral, boards, signals, turn and talk, writing)");
@@ -699,7 +701,7 @@ function observeHTML(){
  const o=D.obs,s=obsStats(),sug=obsSuggest();
  const run=!!o.startedAt, empty=!s.secs&&!o.events.length&&!o.notes.length;
  const lf=focusLookfors(), to=tallyOrder();
- const tallyGroup=gi=>{const g=TALLY[gi];return `<h3 style="margin:14px 0 8px">${g.g}</h3><div class="tally">${g.items.map(i=>`<div class="tbtn" data-tap="${i.k}" role="button" tabindex="0"><div class="tn">${esc(i.n)}</div><div class="td">${esc(i.d)}</div><div class="tc">${o.counts[i.k]||0}</div><button class="tminus" data-untap="${i.k}" aria-label="Undo ${esc(i.n)}">−1</button></div>`).join("")}</div>`};
+ const tallyGroup=gi=>{const g=TALLY[gi];return `<h3 style="margin:14px 0 8px">${g.g}</h3><div class="tally">${g.items.map(i=>`<div class="tbtn" data-tap="${i.k}" role="button" tabindex="0"><div class="tn">${esc(i.n)}</div><div class="td">${esc(i.d)}${i.cfu?`<span class="cfutag">${i.cfu==="whole"?"also a whole-class check":"also a check (one student)"}</span>`:""}</div><div class="tc">${o.counts[i.k]||0}</div><button class="tminus" data-untap="${i.k}" aria-label="Undo ${esc(i.n)}">−1</button></div>`).join("")}</div>`};
  return `${focusPickerHTML()}${followBanner()}<div class="obstop"><div class="clock" id="obsClock">${mmss(s.secs)}</div>
   <button class="btn ${run?"alt":"hi"}" data-act="obstoggle">${run?"Pause":(s.secs?"Resume":"Start timer")}</button>${s.secs?`<button class="btn ghost" data-act="obsreset">Reset</button>`:""}
   <span class="spacer"></span>
@@ -725,13 +727,13 @@ function obsSummaryHTML(o){
  const s=obsStats(o);if(!s)return "";
  const pct=v=>v===null?"–":Math.round(v*100)+"%";
  const box=(v,l)=>`<div class="kbox"><div class="kpi">${v}</div><div class="small muted">${l}</div></div>`;
- return `<div class="kgrid">${box(mmss(s.secs),"observed")}${box(s.otr,"opportunities to respond")}${box(s.mins>=1?s.otrPerMin.toFixed(1):"–","responses per minute")}${box(s.whole,"whole-class responses")}${box(pct(s.volPct),"of individual answers from volunteers")}${box(Math.round(s.gapMins)+" min","longest gap without a response")}${box(s.checks,"whole-class checks")}${box(s.self,"“Does everyone understand?”")}${box(s.pos+" : "+s.cor,"positive : corrective")}${s.rosterSize?box(s.responded+"/"+s.rosterSize,"students responded"):""}</div>`;
+ return `<div class="kgrid">${box(mmss(s.secs),"observed")}${box(s.otr,"opportunities to respond")}${box(s.mins>=1?s.otrPerMin.toFixed(1):"–","responses per minute")}${box(s.whole,"whole-class responses")}${box(pct(s.volPct),"of individual answers from volunteers")}${box(Math.round(s.gapMins)+" min","longest gap without a response")}${box(s.checks,`checks for understanding${s.checks?` (${s.checksWhole} whole-class · ${s.checksSample} cold call)`:""}`)}${box(s.self,"“Does everyone understand?”")}${box(s.pos+" : "+s.cor,"positive : corrective")}${s.rosterSize?box(s.responded+"/"+s.rosterSize,"students responded"):""}</div>`;
 }
 function obsSummaryPrint(o){
  const s=obsStats(o);if(!s||(!s.secs&&!o.events.length&&!o.notes.length))return "";
  const pct=v=>v===null?"–":Math.round(v*100)+"%";
- return `<h2>Observation evidence</h2><table><tr><th>Observed</th><th>Opportunities to respond</th><th>Per minute</th><th>Whole-class</th><th>Volunteers</th><th>Longest gap</th><th>Whole-class checks</th><th>Positive : corrective</th>${s.rosterSize?"<th>Responded</th>":""}</tr>
- <tr><td>${mmss(s.secs)}</td><td>${s.otr}</td><td>${s.otrPerMin.toFixed(1)}</td><td>${s.whole}</td><td>${pct(s.volPct)}</td><td>${Math.round(s.gapMins)} min</td><td>${s.checks}${s.self?` (+${s.self} self-report)`:""}</td><td>${s.pos} : ${s.cor}</td>${s.rosterSize?`<td>${s.responded}/${s.rosterSize}</td>`:""}</tr></table>
+ return `<h2>Observation evidence</h2><table><tr><th>Observed</th><th>Opportunities to respond</th><th>Per minute</th><th>Whole-class</th><th>Volunteers</th><th>Longest gap</th><th>Checks for understanding</th><th>Positive : corrective</th>${s.rosterSize?"<th>Responded</th>":""}</tr>
+ <tr><td>${mmss(s.secs)}</td><td>${s.otr}</td><td>${s.otrPerMin.toFixed(1)}</td><td>${s.whole}</td><td>${pct(s.volPct)}</td><td>${Math.round(s.gapMins)} min</td><td>${s.checks}<br><span class="meta">${s.checksWhole} whole-class · ${s.checksSample} cold call${s.self?` · +${s.self} self-report`:""}</span></td><td>${s.pos} : ${s.cor}</td>${s.rosterSize?`<td>${s.responded}/${s.rosterSize}</td>`:""}</tr></table>
  ${o.notes.length?`<table style="margin-top:6px"><tr><th style="width:60px">Time</th><th style="width:90px">Type</th><th>Note</th></tr>${o.notes.map(n=>`<tr><td>${mmss(n.t)}</td><td>${n.lf?"Look-for seen":n.type==="strength"?"Strength":n.type==="question"?"Ask":"Noticed"}</td><td>${esc(n.text)}${n.macro?` <span class="meta">(${esc(macroById(n.macro).n)})</span>`:""}</td></tr>`).join("")}</table>`:""}`;
 }
 function obsToDebrief(){
