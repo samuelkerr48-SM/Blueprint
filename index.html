@@ -1431,7 +1431,7 @@ async function saveToSharePoint(d){
  const html=standalone(`${d.teacher} – coaching conversation`,planSheet(d),d);
  const fname=convFilename(d), teacher=cleanName(d.teacher), link=spTeacherLink(d.teacher);
  const cardName=cardFilename(d),cardHtml=standalone(`${d.teacher} – action card`,actionCardSheet(d));
- const writeAll=async()=>{const r=await writeAll();try{await writeTo([teacher],cardName,cardHtml)}catch(e){}return r};
+ const writeAll=async()=>{const r=await writeTo([teacher],fname,html);try{await writeTo([teacher],cardName,cardHtml)}catch(e){}return r};
  const markSp=(how)=>{const s=saved.find(x=>x.id===d.id);if(s){s.spSaved=(how||"saved")+" "+new Date().toLocaleDateString();persist("saved")}};
  if(fsSupported()){
   await loadRoot();
