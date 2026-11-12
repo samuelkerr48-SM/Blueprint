@@ -1495,10 +1495,18 @@ async function connectFolder(){const h=await window.showDirectoryPicker({id:"cdp
 async function childDir(dir,name){const lower=name.toLowerCase();for await(const [n,h] of dir.entries()){if(h.kind==="directory"&&n.toLowerCase()===lower)return h}return dir.getDirectoryHandle(name,{create:true})}
 async function writeTo(segs,filename,content){
  if(!(await permitted(spRoot,true)))throw new Error("permission");
- let d=spRoot;const real=[spRoot.name];for(const s of segs){d=await childDir(d,s);real.push(d.name)}
- let existed=false;try{await d.getFileHandle(filename);existed=true}catch(e){}
- const fh=await d.getFileHandle(filename,{create:true});const w=await fh.createWritable();await w.write(content instanceof Blob?content:new Blob([content],{type:"text/html"}));await w.close();
- return {existed,path:[...real,filename]};
+ const blob=content instanceof Blob?content:new Blob([content],{type:"text/html"});
+ const walk=async()=>{let d=spRoot;const real=[spRoot.name];for(const s of segs){d=await childDir(d,s);real.push(d.name)}return {d,real}};
+ const put=async(d,name)=>{const fh=await d.getFileHandle(name,{create:true});const w=await fh.createWritable({keepExistingData:false});try{await w.write(blob);await w.close()}catch(e){try{await w.abort()}catch(_){}throw e}};
+ let {d,real}=await walk();let existed=false;try{await d.getFileHandle(filename);existed=true}catch(e){}
+ try{await put(d,filename);return {existed,path:[...real,filename]}}catch(e1){
+  // OneDrive may be syncing the old copy, or it is open in Word: wait, look the folder up again and retry
+  await new Promise(r=>setTimeout(r,1200));
+  try{({d,real}=await walk());try{await d.removeEntry(filename)}catch(_){}await put(d,filename);return {existed,path:[...real,filename]}}catch(e2){
+   const dot=filename.lastIndexOf("."),stem=dot>0?filename.slice(0,dot):filename,ext=dot>0?filename.slice(dot):"";
+   for(let i=2;i<10;i++){const alt=`${stem} (${i})${ext}`;try{await d.getFileHandle(alt);continue}catch(_){}
+    try{await put(d,alt);return {existed,renamed:true,path:[...real,alt]}}catch(e3){}}
+   throw e2}}
 }
 function spTeacherLink(teacher){
  let base=(settings.spUrl||"").trim();if(!base)return "";
@@ -1521,12 +1529,12 @@ async function saveToSharePoint(d){
  const planName=convFilename(d).replace(/\.html$/,".docx"),cardName=cardFilename(d).replace(/\.html$/,".docx");
  const planDoc=DOCX.build(planSheet(d),`${d.teacher} – coaching conversation`,d),cardDoc=DOCX.build(actionCardSheet(d),`${d.teacher} – action card`);
  const FILES=[[planName,planDoc],[cardName,cardDoc]];
- const writeAll=async()=>{const r=await writeTo([teacher],planName,planDoc);await writeTo([teacher],cardName,cardDoc);return r};
+ const writeAll=async()=>{const r=await writeTo([teacher],planName,planDoc);const r2=await writeTo([teacher],cardName,cardDoc);r.renamed=r.renamed||r2.renamed;return r};
  const markSp=(how)=>{const s=saved.find(x=>x.id===d.id);if(s){s.spSaved=(how||"saved")+" "+new Date().toLocaleDateString();persist("saved")}};
  if(fsSupported()){
   await loadRoot();
   if(spRoot&&(await permitted(spRoot,false))){
-   try{const r=await writeAll();markSp();toast(`<b>${r.existed?"Saved (replaced the earlier copies)":"Saved to SharePoint"}</b> – full plan and action card (Word)<br><br>${r.path.map(esc).join(" › ")}${link?`<br><a href="${esc(link)}" target="_blank" rel="noopener">Open ${esc(teacher)}’s folder in SharePoint</a>`:""}`,9000);render();return}
+   try{const r=await writeAll();markSp();toast(`${r.renamed?"<b>Saved as a new copy</b> – the earlier file was open or still syncing, so it wasn’t replaced<br>":`<b>${r.existed?"Saved (replaced the earlier copies)":"Saved to SharePoint"}</b>`} – full plan and action card (Word)<br><br>${r.path.map(esc).join(" › ")}${link?`<br><a href="${esc(link)}" target="_blank" rel="noopener">Open ${esc(teacher)}’s folder in SharePoint</a>`:""}`,9000);render();return}
    catch(e){/* fall through to dialog */}
   }
  }
