@@ -350,6 +350,14 @@ header.top .brand .bsep{width:1px;height:28px;background:rgba(255,255,255,.35)}
 .ps .tcardp .nuc ul{margin:2px 0 0;padding-left:18px}
 .card.nuance .pen{min-width:40px;min-height:40px;color:var(--blue);text-decoration:none}
 
+.card.growth{margin-bottom:14px;border-left:4px solid var(--blue)}
+.growth .gsum{margin:6px 0 8px;font-weight:600;color:var(--navy)}
+.growth .gstep{background:var(--b50);border-radius:8px;padding:8px 10px;margin:6px 0}
+.gtable{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}.gtable th,.gtable td{border-bottom:1px solid var(--line);padding:6px 6px;text-align:left}.gtable th{color:var(--navy);font-size:13px}
+.tr{font-weight:700;white-space:nowrap}.tr.up{color:#1e6b34}.tr.down{color:#b45309}.tr.same{color:#5a6878}
+.spark{margin-top:10px;color:var(--navy)}
+.ps .tr.up{color:#1e6b34}.ps .tr.down{color:#b45309}.ps .tr.same{color:#5a6878}
+
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-180.png">
@@ -985,6 +993,7 @@ function step1(){
  const prevC=D.prev?saved.find(s=>s.id===D.prev):null;
  return `<div class="tip"><b>Name what worked.</b> Be specific: what the teacher did, and the effect it had on students. One to three strengths is plenty.</div>
  ${prevC?`<div class="card" style="margin-bottom:14px"><h3>Last cycle (${esc(prevC.date)})</h3><div class="small">${prevC.goal&&(prevC.goals||[]).find(g=>g.id===prevC.goal)?`Goal: <b>${esc(prevC.goals.find(g=>g.id===prevC.goal).text)}</b><br>`:""}${prevC.chosen.map(c=>`<b>${esc(T[c]?T[c].n:c)}</b>${(prevC.plans[c]||{}).action?": "+esc(prevC.plans[c].action):""}${D.prev===prevC.id&&T[c]&&lastLookfor(c)?` <span class="fwn ${lfSeen(lastLookfor(c))?"on":""}">${lfSeen(lastLookfor(c))?`look-for seen ×${lfSeen(lastLookfor(c))} today`:"look-for not seen today"}</span>`:""}${lastLevel(prevC,c)?` <span class="lv ${lastLevel(prevC,c)}">${levelName(lastLevel(prevC,c))}</span>`:""}`).join("<br>")||"No technique recorded."}</div>${D.prev===prevC.id&&!(prevC.followups||[]).some(f=>f.date>=prevC.date)?`<button class="btn sm alt" style="margin-top:8px" data-followup="${prevC.id}">Rate last cycle’s action step</button>`:""}</div>`:""}
+ ${growthCardHTML()}
  ${D.notice.map((n,i)=>`<div class="notice"><span class="num">${i+1}</span>
   <div><label class="f">What you did</label><textarea class="t" data-notice="${i}|did" placeholder="e.g. You kept the worked example on the board during practice">${esc(n.did)}</textarea></div>
   <div><label class="f">The effect on students</label><textarea class="t" data-notice="${i}|effect" placeholder="e.g. Students referred back to it instead of waiting for help">${esc(n.effect)}</textarea></div>
@@ -1118,6 +1127,84 @@ function finishModal(){
  mb.querySelector("[data-m=done]").onclick=()=>{hideModal();setView("home")};
 }
 function worthSaving(d){return (d.teacher||"").trim()&&(d.notice.some(n=>(n.did||"").trim())||(d.reflect.well||"").trim()||(d.reflect.work||"").trim()||d.goals.length||d.chosen.length||(d.obs&&(d.obs.events.length||d.obs.notes.length)))}
+
+/* =====================================================================
+   GROWTH – compares a follow-up cycle with the one before it
+   ===================================================================== */
+function cycleBefore(d){if(!d||!d.prev)return null;return saved.find(s=>s.id===d.prev)||null}
+function latestLevel(c,tech){const f=(c.followups||[]).slice().reverse().find(f=>f.ratings&&f.ratings[tech]&&f.ratings[tech].level);return f?f.ratings[tech].level:""}
+function seenCount(obs,text){return obs&&text?(obs.notes||[]).filter(n=>n.lf===text).length:0}
+const GROWTH_MEASURES=[
+ {k:"otrPerMin",label:"Opportunities to respond per minute",dir:1,val:s=>s.otrPerMin,fmt:v=>v.toFixed(1)},
+ {k:"whole",label:"Whole-class responses per 10 minutes",dir:1,val:s=>s.mins?s.whole/s.mins*10:null,fmt:v=>v.toFixed(1)},
+ {k:"checks",label:"Checks for understanding per 10 minutes",dir:1,val:s=>s.mins?s.checks/s.mins*10:null,fmt:v=>v.toFixed(1)},
+ {k:"vol",label:"Answers from volunteers",dir:-1,val:s=>s.volPct,fmt:v=>Math.round(v*100)+"%"},
+ {k:"gap",label:"Longest stretch with no student response",dir:-1,val:s=>s.gapMins,fmt:v=>Math.round(v)+" min"},
+ {k:"pos",label:"Positive to corrective comments",dir:1,val:s=>(s.pos+s.cor)?s.pos/Math.max(s.cor,1):null,fmt:(v,s)=>`${s.pos} : ${s.cor}`},
+ {k:"cov",label:"Students who responded at least once",dir:1,val:s=>s.coverage,fmt:(v,s)=>`${s.responded}/${s.rosterSize}`}
+];
+function growthData(d){
+ const pc=cycleBefore(d);if(!pc)return null;
+ const a=pc.obs&&obsElapsed(pc.obs)>=60?obsStats(pc.obs):null, b=d.obs&&obsElapsed(d.obs)>=60?obsStats(d.obs):null;
+ const rows=[];
+ if(a&&b)GROWTH_MEASURES.forEach(m=>{const va=m.val(a),vb=m.val(b);if(va==null||vb==null||isNaN(va)||isNaN(vb))return;if(m.k==="cov"&&!(a.rosterSize&&b.rosterSize))return;
+  const diff=vb-va,base=Math.max(Math.abs(va),m.k==="gap"?1:m.k==="vol"||m.k==="cov"?0.1:0.5);
+  const trend=Math.abs(diff)/base<0.1?"same":(diff*m.dir>0?"up":"down");
+  rows.push({label:m.label,prev:m.fmt(va,a),now:m.fmt(vb,b),trend})});
+ const steps=(pc.chosen||[]).filter(id=>T[id]).map(id=>{const p=(pc.plans||{})[id]||{},look=p.look||(T[id].look||[])[0]||"";
+  return {id,name:T[id].n,action:p.action||"",look,prevSeen:seenCount(pc.obs,look),nowSeen:seenCount(d.obs,look),level:latestLevel(pc,id)}});
+ const g=(pc.goals||[]).find(x=>x.id===pc.goal);
+ const up=rows.filter(r=>r.trend==="up").length;
+ return {pc,goal:g?g.text:"",rows,steps,up,total:rows.length,hasObs:!!(a&&b)};
+}
+function teacherJourney(name){
+ return saved.filter(s=>(s.teacher||"")===name).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map(s=>{
+  const st=s.obs&&obsElapsed(s.obs)>=60?obsStats(s.obs):null;const g=(s.goals||[]).find(x=>x.id===s.goal);
+  const lv=(s.chosen||[]).map(id=>latestLevel(s,id)).filter(Boolean);
+  return {id:s.id,date:s.date,goal:g?g.text:"",techs:(s.chosen||[]).filter(id=>T[id]).map(id=>T[id].n),otr:st?st.otrPerMin:null,level:lv.length?lv[lv.length-1]:""}});
+}
+const TREND={up:["▲","Improved"],down:["▼","Lower"],same:["●","Steady"]};
+function growthSummary(gd){
+ if(!gd)return "";const bits=[];
+ if(gd.total)bits.push(`${gd.up} of ${gd.total} measure${gd.total>1?"s":""} improved since ${gd.pc.date}`);
+ const seen=gd.steps.filter(s=>s.nowSeen>0);if(seen.length)bits.push(`the agreed look-for was seen ${seen.map(s=>s.nowSeen+"×").join(", ")} today`);
+ return bits.length?bits.join("; ")+".":"";
+}
+/* in-app card (step 1) */
+function growthCardHTML(){
+ const gd=growthData(D);if(!gd)return "";
+ const j=teacherJourney(D.teacher).filter(c=>c.id!==D.id);const pts=j.map(c=>c.otr).concat([D.obs&&obsElapsed(D.obs)>=60?obsStats(D.obs).otrPerMin:null]);
+ return `<div class="card growth"><div class="row" style="align-items:baseline"><h3 style="margin:0">Growth since the last cycle</h3><span class="small muted">${esc(gd.pc.date)}</span></div>
+ ${growthSummary(gd)?`<p class="gsum">${esc(growthSummary(gd))}</p>`:""}
+ ${gd.steps.length?`<div class="gsteps">${gd.steps.map(s=>`<div class="gstep"><b>${esc(s.name)}</b>${s.look?`<div class="small">Look-for: ${esc(s.look)}</div>`:""}
+  <div class="small">Seen last cycle: <b>${s.prevSeen}</b> · today: <b>${s.nowSeen}</b>${s.level?` · Follow-up rating: <span class="lv ${s.level}">${levelName(s.level)}</span>`:""}</div></div>`).join("")}</div>`:""}
+ ${gd.rows.length?`<table class="gtable"><tr><th>Measure</th><th>${esc(gd.pc.date)}</th><th>Today</th><th></th></tr>${gd.rows.map(r=>`<tr><td>${esc(r.label)}</td><td>${esc(r.prev)}</td><td><b>${esc(r.now)}</b></td><td class="tr ${r.trend}">${TREND[r.trend][0]} ${TREND[r.trend][1]}</td></tr>`).join("")}</table>`
+  :`<p class="small muted" style="margin:6px 0 0">Record at least a minute of observation in both cycles to compare tallies.</p>`}
+ ${pts.filter(v=>v!=null).length>=2?sparkHTML(pts,j.map(c=>c.date).concat(["Today"])):""}
+ <p class="small muted" style="margin:8px 0 0">Use the improvements in your appreciative noticing below.</p></div>`}
+function sparkHTML(vals,labels){
+ const W=280,H=64,P=8,v=vals.map(x=>x==null?null:x),ok=v.filter(x=>x!=null),mx=Math.max(...ok,1),n=v.length;
+ const X=i=>P+(n>1?i*(W-2*P)/(n-1):0),Y=x=>H-P-(x/mx)*(H-2*P-10);
+ const pts=v.map((x,i)=>x==null?null:[X(i),Y(x)]).filter(Boolean);
+ return `<div class="spark"><div class="small muted">Opportunities to respond per minute, each cycle</div><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Opportunities to respond per minute across cycles: ${ok.map(x=>x.toFixed(1)).join(", ")}">
+ <polyline fill="none" stroke="var(--blue)" stroke-width="2" points="${pts.map(p=>p.join(",")).join(" ")}"/>
+ ${v.map((x,i)=>x==null?"":`<circle cx="${X(i)}" cy="${Y(x)}" r="3.5" fill="${i===n-1?"var(--navy)":"var(--blue)"}"/><text x="${X(i)}" y="${Y(x)-7}" font-size="10" text-anchor="middle" fill="currentColor">${x.toFixed(1)}</text>`).join("")}</svg>
+ <div class="small muted" style="display:flex;justify-content:space-between">${labels.map(l=>`<span>${esc(l)}</span>`).join("")}</div></div>`}
+/* print / Word sections */
+function growthPrint(d){
+ const gd=growthData(d);if(!gd)return "";
+ const j=teacherJourney(d.teacher);
+ return `<h2>Growth since the last cycle (${esc(gd.pc.date)})</h2>
+ ${growthSummary(gd)?`<div class="box"><b>${esc(growthSummary(gd))}</b></div>`:""}
+ ${gd.steps.length?`<table style="margin-top:6px"><tr><th>Last cycle’s action step</th><th>Look-for</th><th style="width:12%">Seen last cycle</th><th style="width:12%">Seen today</th><th style="width:14%">Follow-up rating</th></tr>${gd.steps.map(s=>`<tr><td><b>${esc(s.name)}</b>${s.action?"<br>"+esc(s.action):""}</td><td>${esc(s.look)}</td><td class="num">${s.prevSeen}</td><td class="num"><b>${s.nowSeen}</b></td><td>${esc(levelName(s.level))||"–"}</td></tr>`).join("")}</table>`:""}
+ ${gd.rows.length?`<table style="margin-top:6px"><tr><th>Measure</th><th style="width:16%">${esc(gd.pc.date)}</th><th style="width:16%">This cycle</th><th style="width:16%">Change</th></tr>${gd.rows.map(r=>`<tr><td>${esc(r.label)}</td><td>${esc(r.prev)}</td><td><b>${esc(r.now)}</b></td><td><span class="tr ${r.trend}">${TREND[r.trend][0]} ${TREND[r.trend][1]}</span></td></tr>`).join("")}</table>`:""}
+ ${j.length>2?journeyPrint(j):""}`}
+function journeyPrint(j){return `<h3 style="margin-top:8px">Coaching journey</h3><table><tr><th style="width:12%">Cycle</th><th>Goal</th><th>Technique</th><th style="width:14%">Responses per minute</th><th style="width:14%">Follow-up rating</th></tr>${j.map((c,i)=>`<tr><td>${i+1} · ${esc(c.date)}</td><td>${esc(c.goal)}</td><td>${c.techs.map(esc).join(", ")}</td><td class="num">${c.otr==null?"–":c.otr.toFixed(1)}</td><td>${esc(levelName(c.level))||"–"}</td></tr>`).join("")}</table>`}
+function growthCardPrint(d){
+ const gd=growthData(d);if(!gd)return "";
+ const wins=gd.rows.filter(r=>r.trend==="up"),seen=gd.steps.filter(s=>s.nowSeen>0);
+ if(!wins.length&&!seen.length)return "";
+ return `<div class="box"><b>Your growth since ${esc(gd.pc.date)}</b><ul>${seen.map(s=>`<li>${esc(s.look||s.name)} – seen ${s.nowSeen} time${s.nowSeen>1?"s":""} today${s.prevSeen?` (${s.prevSeen} last cycle)`:""}</li>`).join("")}${wins.map(r=>`<li>${esc(r.label)}: ${esc(r.prev)} → <b>${esc(r.now)}</b></li>`).join("")}</ul></div>`}
 
 /* ---------- library ---------- */
 function vtlmMapHTML(){
@@ -1546,6 +1633,7 @@ function planSheet(d){
  <table><tr><th>Technique</th><th>Action step</th><th>Look-for</th><th>When / follow-up</th><th>Rehearsed</th></tr>
  ${d.chosen.filter(id=>T[id]).map(id=>{const p=d.plans[id]||{};return `<tr><td><b>${esc(T[id].n)}</b><br><span class="meta">${esc(macroById(T[id].m).n)}</span></td><td>${esc(p.action)}</td><td>${esc(p.look)}</td><td>${esc(p.when)}<br>${esc(p.follow)}</td><td style="text-align:center">${p.rehearsed?"✓":"☐"}${p.rnote?`<div class="meta" style="text-align:left">${esc(p.rnote)}</div>`:""}</td></tr>`}).join("")}</table>
  ${d.obs?obsSummaryPrint(d.obs):""}
+ ${growthPrint(d)}
  ${(d.followups||[]).length?`<h2>Follow-ups</h2><table><tr><th>Date</th><th>Technique</th><th>Level</th><th>Evidence</th></tr>${d.followups.flatMap(f=>Object.entries(f.ratings||{}).map(([k,v])=>`<tr><td>${esc(f.date)}</td><td>${esc(T[k]?T[k].n:k)}</td><td>${esc(levelName(v.level))}</td><td>${esc(v.note||"")}${f.note?" – "+esc(f.note):""}</td></tr>`)).join("")}</table>`:""}
  <h2>Follow-up observation notes</h2><div class="lines">${"<div class='l'></div>".repeat(4)}</div></div>
  ${d.chosen.filter(id=>T[id]).map(id=>techSheet(id,d)).join("")}`}
@@ -1601,12 +1689,14 @@ function teacherSheet(name){
  return `<div class="page">${head("Coaching cycles – "+name,settings.school||"")}<table><tr><th>Date</th><th>Focus areas</th><th>Action steps</th><th>Follow-up</th></tr>
  ${list.map(s=>`<tr><td>${esc(s.date)}</td><td>${s.macros.map(m=>esc(macroById(m)?macroById(m).n:m)).join("<br>")}</td><td>${s.chosen.map(c=>`<b>${esc(T[c]?T[c].n:c)}</b>${(s.plans[c]||{}).action?"<br>"+esc(s.plans[c].action):""}`).join("<br>")}</td>
  <td>${(s.followups||[]).map(f=>esc(f.date)+": "+Object.entries(f.ratings||{}).map(([k,v])=>esc(T[k]?T[k].n.split(" (")[0]:k)+" – "+esc(levelName(v.level))).join("; ")).join("<br>")||"–"}</td></tr>`).join("")}</table>
+ ${(()=>{const j=teacherJourney(name);return j.some(c=>c.otr!=null)?journeyPrint(j):""})()}
  <h2>Reflection on progress</h2><div class="lines">${"<div class='l'></div>".repeat(6)}</div></div>`}
 
 function actionCardSheet(d){
  d=norm(d);const g=(d.goals||[]).find(x=>x.id===d.goal);
  return `<div class="page">${head("My action step",(d.teacher||"")+(d.date?" · "+d.date:""))}
  ${g?`<div class="goalp"><div class="meta">Our goal</div><div class="gp">${esc(g.text)}</div></div>`:""}
+ ${growthCardPrint(d)}
  ${d.chosen.filter(id=>T[id]).map(id=>{const t=T[id],p=d.plans[id]||{},v=videos[id];return `<h2>${esc(t.n)}</h2>
   ${p.action?`<div class="box" style="font-size:12pt"><b>I will:</b> ${esc(p.action)}</div>`:""}
   <table style="margin-top:6px">${(t.steps||[]).map((s,i)=>`<tr><td class="num">${i+1}</td><td><b>${esc(s[0])}.</b> ${esc(s[1])}</td></tr>`).join("")}</table>
@@ -1666,7 +1756,7 @@ const DOCX=(()=>{
     if(tg==="br"){o+="<w:r><w:br/></w:r>";continue}
     if(tg==="img"){o+=image(n.getAttribute("src"),cl.contains("sl")?36:40);continue}
     if(tg==="a"){const href=n.getAttribute("href")||"";if(/^https?:/i.test(href)){const id=addRel("hyperlink",href,true);o+=`<w:hyperlink r:id="${id}">${inline(n,Object.assign({},f,{c:BLUE,u:1}))}</w:hyperlink>`}else o+=inline(n,f);continue}
-    const nf=Object.assign({},f);if(tg==="b"||tg==="strong"||tg==="th")nf.b=1;if(tg==="i"||tg==="em")nf.i=1;if(cl.contains("meta")||cl.contains("sub")){nf.c=GREY;nf.sz=f.sz||18}
+    const nf=Object.assign({},f);if(tg==="b"||tg==="strong"||tg==="th")nf.b=1;if(tg==="i"||tg==="em")nf.i=1;if(cl.contains("meta")||cl.contains("sub")){nf.c=GREY;nf.sz=f.sz||18}if(cl.contains("up")){nf.c="1E6B34";nf.b=1}if(cl.contains("down")){nf.c="B45309";nf.b=1}if(cl.contains("same")){nf.c=GREY}
     o+=inline(n,nf)}
    return o}
   const para=(content,ppr)=>`<w:p>${ppr?`<w:pPr>${ppr}</w:pPr>`:""}${content}</w:p>`;
