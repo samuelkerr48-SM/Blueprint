@@ -1410,7 +1410,7 @@ async function writeTo(segs,filename,content){
  if(!(await permitted(spRoot,true)))throw new Error("permission");
  let d=spRoot;const real=[spRoot.name];for(const s of segs){d=await childDir(d,s);real.push(d.name)}
  let existed=false;try{await d.getFileHandle(filename);existed=true}catch(e){}
- const fh=await d.getFileHandle(filename,{create:true});const w=await fh.createWritable();await w.write(new Blob([content],{type:"text/html"}));await w.close();
+ const fh=await d.getFileHandle(filename,{create:true});const w=await fh.createWritable();await w.write(content instanceof Blob?content:new Blob([content],{type:"text/html"}));await w.close();
  return {existed,path:[...real,filename]};
 }
 function spTeacherLink(teacher){
@@ -1422,6 +1422,7 @@ function spTeacherLink(teacher){
   base=base.replace(/\/+$/,"");return name?base+"/"+encodeURIComponent(name):base;
  }catch(e){return ""}
 }
+function recordFilename(d){return `${d.date||new Date().toISOString().slice(0,10)} ${cleanName(d.teacher)||"Teacher"} – Blueprint record.html`}
 function cardFilename(d){return `${d.date||new Date().toISOString().slice(0,10)} ${cleanName(d.teacher)||"Teacher"} – action card.html`}
 function convFilename(d){return `${d.date||new Date().toISOString().slice(0,10)} ${cleanName(d.teacher)||"Teacher"} – coaching conversation.html`}
 async function saveToSharePoint(d){
@@ -1429,30 +1430,32 @@ async function saveToSharePoint(d){
   const b=$("#modal [data-goStep1]");if(b)b.addEventListener("click",()=>{step=1;setView("debrief")});return}
  storeLocal(d,true);
  const html=standalone(`${d.teacher} – coaching conversation`,planSheet(d),d);
- const fname=convFilename(d), teacher=cleanName(d.teacher), link=spTeacherLink(d.teacher);
- const cardName=cardFilename(d),cardHtml=standalone(`${d.teacher} – action card`,actionCardSheet(d));
- const writeAll=async()=>{const r=await writeTo([teacher],fname,html);try{await writeTo([teacher],cardName,cardHtml)}catch(e){}return r};
+ const teacher=cleanName(d.teacher), link=spTeacherLink(d.teacher);
+ const planName=convFilename(d).replace(/\.html$/,".docx"),cardName=cardFilename(d).replace(/\.html$/,".docx"),fname=recordFilename(d);
+ const planDoc=DOCX.build(planSheet(d),`${d.teacher} – coaching conversation`),cardDoc=DOCX.build(actionCardSheet(d),`${d.teacher} – action card`);
+ const FILES=[[planName,planDoc],[cardName,cardDoc],[fname,html]];
+ const writeAll=async()=>{const r=await writeTo([teacher],planName,planDoc);await writeTo([teacher],cardName,cardDoc);await writeTo([teacher],fname,html);return r};
  const markSp=(how)=>{const s=saved.find(x=>x.id===d.id);if(s){s.spSaved=(how||"saved")+" "+new Date().toLocaleDateString();persist("saved")}};
  if(fsSupported()){
   await loadRoot();
   if(spRoot&&(await permitted(spRoot,false))){
-   try{const r=await writeAll();markSp();toast(`<b>${r.existed?"Saved (replaced the earlier copies)":"Saved to SharePoint"}</b> – conversation and action card<br><br>${r.path.map(esc).join(" › ")}${link?`<br><a href="${esc(link)}" target="_blank" rel="noopener">Open ${esc(teacher)}’s folder in SharePoint</a>`:""}`,9000);render();return}
+   try{const r=await writeAll();markSp();toast(`<b>${r.existed?"Saved (replaced the earlier copies)":"Saved to SharePoint"}</b> – full plan and action card (Word), plus the Blueprint record<br><br>${r.path.map(esc).join(" › ")}${link?`<br><a href="${esc(link)}" target="_blank" rel="noopener">Open ${esc(teacher)}’s folder in SharePoint</a>`:""}`,9000);render();return}
    catch(e){/* fall through to dialog */}
   }
  }
  showModal(`<h2>Save to SharePoint</h2>
-  <p>Saves the full conversation and the teacher’s action card as print-ready files in <b>${esc(teacher)}</b>’s folder.</p>
-  ${[fname,cardName].map(f=>`<div class="path">${esc(spRoot?spRoot.name:"Coaching conversations")}<span>›</span>${esc(teacher)}<span>›</span><b>${esc(f)}</b></div>`).join("")}
+  <p>Saves the full plan and the teacher’s action card as Word documents in <b>${esc(teacher)}</b>’s folder, plus a Blueprint record you can reopen in Blueprint later.</p>
+  ${[planName,cardName,fname].map(f=>`<div class="path">${esc(spRoot?spRoot.name:"Coaching conversations")}<span>›</span>${esc(teacher)}<span>›</span><b>${esc(f)}</b></div>`).join("")}
   <div class="row">${fsSupported()?`<button class="btn hi" data-m="connectsave">${spRoot?"Save":"Connect synced folder and save"}</button>`:""}
-  <button class="btn ${fsSupported()?"alt":"hi"}" data-m="download">Download both files</button>
+  <button class="btn ${fsSupported()?"alt":"hi"}" data-m="download">Download the files</button>
   ${link?`<a class="btn alt" href="${esc(link)}" target="_blank" rel="noopener">Open ${esc(teacher)}’s SharePoint folder ↗</a>`:""}
   <button class="btn ghost" data-mclose>Cancel</button></div>
   <p class="small muted" style="margin-top:10px">${fsSupported()?"Choose the synced copy of your coaching folder (in File Explorer under your school’s name). A folder for the teacher is made if it doesn’t exist.":"Download the files, then drag them into the teacher’s folder. If the folder doesn’t exist yet, create it in SharePoint with the teacher’s name."}${link?"":` Add your SharePoint folder address in <a href="#" data-mgo="settings">Backup &amp; SharePoint</a> to get an Open folder link.`}</p>
   <p class="small" id="mErr" style="color:#b00020"></p>`);
  const mb=$("#modal");
  const on=(q,f)=>{const b=mb.querySelector(q);if(b)b.onclick=f};
- on('[data-m="download"]',async()=>{await download(fname,html);await new Promise(r=>setTimeout(r,400));await download(cardName,cardHtml);markSp("file downloaded");hideModal();if(link)toast(`File downloaded. <a href="${esc(link)}" target="_blank" rel="noopener">Open ${esc(teacher)}’s folder</a> and drag them in.`,9000)});
- on('[data-m="connectsave"]',async()=>{try{if(!spRoot)await connectFolder();const r=await writeAll();markSp();hideModal();toast(`<b>Saved to SharePoint</b> – conversation and action card<br>${r.path.map(esc).join(" › ")}${link?`<br><a href="${esc(link)}" target="_blank" rel="noopener">Open ${esc(teacher)}’s folder</a>`:""}`,9000);render()}catch(e){if(e.name!=="AbortError")$("#mErr").textContent=e.message==="permission"?"The browser didn’t allow saving there. Try again and choose Allow, or download instead.":"Couldn’t save there ("+(e.message||e.name)+"). Download instead."}});
+ on('[data-m="download"]',async()=>{for(const [n,c] of FILES){await download(n,c,n.endsWith(".docx")?"application/vnd.openxmlformats-officedocument.wordprocessingml.document":"text/html");await new Promise(r=>setTimeout(r,400))}markSp("file downloaded");hideModal();if(link)toast(`File downloaded. <a href="${esc(link)}" target="_blank" rel="noopener">Open ${esc(teacher)}’s folder</a> and drag them in.`,9000)});
+ on('[data-m="connectsave"]',async()=>{try{if(!spRoot)await connectFolder();const r=await writeAll();markSp();hideModal();toast(`<b>Saved to SharePoint</b> – full plan and action card (Word), plus the Blueprint record<br>${r.path.map(esc).join(" › ")}${link?`<br><a href="${esc(link)}" target="_blank" rel="noopener">Open ${esc(teacher)}’s folder</a>`:""}`,9000);render()}catch(e){if(e.name!=="AbortError")$("#mErr").textContent=e.message==="permission"?"The browser didn’t allow saving there. Try again and choose Allow, or download instead.":"Couldn’t save there ("+(e.message||e.name)+"). Download instead."}});
  const g=mb.querySelector("[data-mgo]");if(g)g.onclick=e=>{e.preventDefault();hideModal();setView("settings")};
 }
 function storeLocal(d,quiet){const i=saved.findIndex(s=>s.id===d.id);const c=JSON.parse(JSON.stringify(d));if(i>=0){c.spSaved=saved[i].spSaved;saved[i]=c}else saved.push(c);const ok=LS.set(KEYS.saved,saved);markChanged();if(!quiet)toast(ok?"Conversation saved in this browser.":"Couldn’t save in this browser – use Save to SharePoint or download a backup.")}
