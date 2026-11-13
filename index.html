@@ -383,6 +383,11 @@ header.top .brand .bsep{width:1px;height:28px;background:rgba(255,255,255,.35)}
 .samplebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff7e0;border-color:#f1d9a0;margin-bottom:12px}
 .schoolbar{margin-bottom:12px}.schoolbar .tchip .btn.ghost{min-height:24px;padding:0 4px;text-decoration:none}
 .fbtn[disabled]{opacity:.55;cursor:not-allowed}
+.pill.sf{background:#FDEEE6;color:#9A3412;border-color:#F5C3A6}
+.sfcard{border-left:4px solid #F06322}
+table.mini{width:100%;border-collapse:collapse;font-size:13.5px}
+table.mini th{text-align:left;font-weight:700;color:var(--navy);border-bottom:2px solid var(--line);padding:6px 8px;font-size:12.5px}
+table.mini td{border-bottom:1px solid var(--line);padding:6px 8px;vertical-align:top}
 
 </style>
 <link rel="manifest" href="manifest.webmanifest">
@@ -520,7 +525,7 @@ let nuances = LS.get(KEYS.nuance,{});
 let saved = LS.get(KEYS.saved,[]);
 let custom = LS.get(KEYS.custom,{});
 let edits = LS.get(KEYS.edits,{});
-let settings = Object.assign({spUrl:"", school:"", playbook:[], timerMins:20, timerOn:false, helpSeen:false, schoolLogo:"", theme:null}, LS.get(KEYS.settings,{}));
+let settings = Object.assign({spUrl:"", school:"", playbook:[], timerMins:20, timerOn:false, helpSeen:false, schoolLogo:"", theme:null, schoolFocus:null}, LS.get(KEYS.settings,{}));
 const today = ()=>new Date().toISOString().slice(0,10);
 const blank = ()=>({id:"d"+Date.now(), teacher:"", coach:"", date:today(), cls:"", focus:"", notice:[], reflect:{well:"",work:""}, goals:[], goal:null, obsFocus:[], macros:[], probs:[], suggested:[], chosen:[], plans:{}, obs:null, followups:[]});
 let D = Object.assign(blank(), LS.get(KEYS.draft,null) || {});
@@ -601,7 +606,7 @@ function toast(html,ms){const t=$("#toast");t.innerHTML=html;t.style.display="bl
 const slug=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 const cleanName=s=>String(s||"").replace(/[\\/:*?"<>|#%]+/g," ").replace(/\s+/g," ").replace(/[ .]+$/,"").trim();
 const schoolLabel=()=>settings.school?settings.school+"’s":"Our school’s";
-function badges(id){const t=T[id];return (inPlaybook(id)?`<span class="pill pb">★ ${esc(schoolLabel())} practice</span> `:"")+(t.own?`<span class="pill own">Added by your school</span> `:"")+(t.edited?`<span class="pill edited">Edited</span> `:"")}
+function badges(id){const t=T[id];return (isFocus(id)?`<span class="pill sf">◎ School focus</span> `:"")+(inPlaybook(id)?`<span class="pill pb">★ ${esc(schoolLabel())} practice</span> `:"")+(t.own?`<span class="pill own">Added by your school</span> `:"")+(t.edited?`<span class="pill edited">Edited</span> `:"")}
 const LEVELS=[["notyet","Not yet"],["partly","Partly"],["secure","Secure"]];
 const levelName=k=>(LEVELS.find(l=>l[0]===k)||["",""])[1];
 const RATE=["","Beginning","Developing","Consistent","Embedded"];
@@ -612,7 +617,7 @@ function rankTechs(){
  const sc={}, why={};
  D.probs.forEach(pid=>{const p=probById(pid); if(!p)return;
   p.techs.forEach((tid,i)=>{sc[tid]=(sc[tid]||0)+(i===0?3:i===1?2:1);(why[tid]=why[tid]||[]).push(p.t)})});
- Object.keys(sc).forEach(id=>{if(inPlaybook(id))sc[id]+=2});
+ Object.keys(sc).forEach(id=>{if(inPlaybook(id))sc[id]+=2;if(isFocus(id))sc[id]+=3});
  return Object.keys(sc).filter(id=>T[id]).sort((a,b)=>sc[b]-sc[a]||why[b].length-why[a].length).map(id=>({id,score:sc[id],why:why[id]}));
 }
 function playsFor(mid){return Object.keys(T).filter(id=>T[id].m===mid).concat(Object.keys(T).filter(id=>T[id].m!==mid&&(T[id].also||[]).includes(mid)))}
@@ -811,7 +816,7 @@ function focusPickerHTML(){
   <div class="wide"><label class="f">Lesson</label><input class="t" data-f="focus" value="${esc(D.focus)}" placeholder="What’s being taught, e.g. Year 4 fractions – equivalent fractions"></div>
   <div class="wide"><label class="f">Observation focus <span class="muted" style="font-weight:400">– what we agreed to look for (choose up to 2)</span></label>
    ${sel.length?`<div class="fchips">${sel.map((f,i)=>`<span class="fchip"><span class="pill ${macroById(focusMacro(f)).el}">${f.type==="goal"?"Goal":"Focus area"}</span> ${esc(focusLabel(f))}<button class="btn ghost" data-unfocus="${i}" aria-label="Remove">✕</button></span>`).join("")}</div>`:""}
-   ${sel.length<2?`<input class="t" id="focusQ" value="${esc(focusQ)}" placeholder="Search, e.g. respond, transitions, feedback, behaviour" autocomplete="off">
+   ${focusQuickHTML()}${sel.length<2?`<input class="t" id="focusQ" value="${esc(focusQ)}" placeholder="Search, e.g. respond, transitions, feedback, behaviour" autocomplete="off">
    ${list.length?`<div class="fres">${list.map(x=>`<button class="fopt" data-pickfocus="${x.type}|${x.id}"><span class="pill ${macroById(x.type==="goal"?probById(x.id).macro:x.id).el}">${x.type==="goal"?"Goal":"Focus area"}</span> <span>${esc(focusLabel(x))}</span>${x.type==="goal"?`<span class="small muted"> · ${esc(macroById(probById(x.id).macro).n)}</span>`:""}</button>`).join("")}</div>`:focusQ.trim()?`<p class="small muted" style="margin:6px 0 0">No matches – try another word.</p>`:""}`:""}
   </div></div></div>`;
 }
@@ -847,10 +852,9 @@ function tallyOrder(){
    HOME + DEBRIEF (with pre-reflection, observation evidence, timer)
    ===================================================================== */
 function backupNag(){
- const lb=LS.get(KEYS.backup,0), lc=LS.get(KEYS.changed,0);
- const hasData=saved.length||Object.keys(custom).length||Object.keys(edits).length||Object.keys(videos).length||(settings.playbook||[]).length;
- if(!hasData||lc<=lb)return "";
- return `<div class="warn row"><div><b>You have changes that aren’t in a backup yet.</b><div class="small muted">Saved conversations, your techniques, edits, playbook and video links live in this browser only. ${lb?"Last backup: "+new Date(lb).toLocaleDateString():"No backup yet."}</div></div><span class="spacer"></span><button class="btn hi sm" data-act="backup">Download backup file</button></div>`;
+ if(!backupDue())return "";
+ const lb=LS.get(KEYS.backup,0),days=lb?Math.floor((Date.now()-lb)/864e5):0;
+ return `<div class="warn row"><div><b>${lb?`It’s been ${days} days since your last backup.`:"Time for your first backup."}</b><div class="small muted">Your records live in this browser only. A backup in your SharePoint coaching folder means nothing is lost if the computer is replaced or the browser is cleared.</div></div><span class="spacer"></span><button class="btn hi sm" data-act="spbackup">Back up now</button><button class="btn ghost sm" data-act="snoozebackup">Remind me in 3 days</button></div>`;
 }
 function resourcesHTML(){
  return `<div class="grid g2 links"><div class="card"><h3>VTLM 2.0 guides (Arc)</h3>${["pack","hub","howto","reflect"].map(k=>linkA(k)).join("")}
@@ -917,6 +921,7 @@ function homeHTML(){
  </div>
  <div class="grid g2" style="margin-top:16px">
   <button class="tile" data-go="library"><b>Technique library</b><span>${Object.keys(T).length} step-by-step plays, organised by VTLM 2.0</span></button>
+  <button class="tile" data-act="walkstart"><b>Learning walk</b><span>Short visits across many rooms – see how often whole-school practices happen</span></button>
   <button class="tile" data-go="saved"><b>Teachers</b><span>${new Set(saved.map(s=>s.teacher).filter(Boolean)).size} teachers · coaching cycles, follow-ups and patterns</span></button>
  </div>`;
 }
@@ -925,7 +930,9 @@ function moreHTML(){
   <button class="tile" data-act="help"><b>How Blueprint works</b><span>The coaching cycle and five debrief steps</span></button>
   <button class="tile" data-go="settings"><b>Settings</b><span>School playbook, SharePoint, backup, timer</span></button>
   <button class="tile" data-go="resources"><b>VTLM 2.0 &amp; PCMS resources</b><span>Official guides and placemats</span></button>
-  <button class="tile" data-act="backup"><b>Download backup file</b><span>Keep a copy of everything in SharePoint or OneDrive</span></button>
+  <button class="tile" data-act="spbackup"><b>Back up now</b><span>Save a copy of everything to your SharePoint coaching folder (or download it)</span></button>
+  <button class="tile" data-act="walkstart"><b>Learning walk</b><span>Short visits across many rooms, added to the school’s patterns</span></button>
+  <button class="tile" data-act="termreportgo"><b>Term report</b><span>A Word summary of coaching, growth and learning walks for leaders</span></button>
   ${saved.some(s=>s.sample)?`<button class="tile" data-act="rmsample"><b>Remove sample data</b><span>Delete the made-up practice teachers</span></button>`:`<button class="tile" data-act="sample"><b>Practice with sample teachers</b><span>Load three made-up teachers to explore progress and patterns – great for PL</span></button>`}
  </div>`;
 }
@@ -1102,7 +1109,7 @@ function applyGoal(){
 function goalRank(){
  const g=curGoal();if(!g)return [];
  if(g.pid){const r=rankTechs();return r}
- if(g.macro){return playsFor(g.macro).map((id,i)=>({id,score:(T[id].m===g.macro?2:1)+(inPlaybook(id)?2:0),why:[macroById(g.macro).n]})).sort((a,b)=>b.score-a.score)}
+ if(g.macro){return playsFor(g.macro).map((id,i)=>({id,score:(T[id].m===g.macro?2:1)+(inPlaybook(id)?2:0)+(isFocus(id)?3:0),why:[macroById(g.macro).n]})).sort((a,b)=>b.score-a.score)}
  return [];
 }
 let showAllBets=false;
@@ -1110,7 +1117,7 @@ function step4(){
  const r=goalRank();const shown=showAllBets?r:r.slice(0,3);
  return `<div class="tip"><b>Choose the strategy or technique.</b> The best bets for the agreed goal${(settings.playbook||[]).length?` (${esc(schoolLabel())} agreed practices first)`:""}. Open a play to look through it together, then choose one.</div>
  <div class="grid g3" style="padding-top:8px">${shown.map((x,i)=>techCard(x.id,x,i===0)).join("")||`<p class="muted">Agree a goal in step 3 first.</p>`}</div>
- ${r.length>3?`<div class="row" style="margin-top:10px"><button class="btn alt sm" data-act="morebets">${showAllBets?"Show top 3 only":`Show ${r.length-3} more`}</button></div>`:""}
+ ${r.length?focusBetNote(shown.map(x=>x.id)):""}${r.length>3?`<div class="row" style="margin-top:10px"><button class="btn alt sm" data-act="morebets">${showAllBets?"Show top 3 only":`Show ${r.length-3} more`}</button></div>`:""}
  <details style="margin-top:14px"><summary class="small">Choose any technique from the library instead</summary><select class="t" id="anyTech" style="margin-top:6px"><option value="">Choose a technique…</option>${ELEMENTS.map(e=>`<optgroup label="${e.n}">${Object.keys(T).filter(id=>techEl(id)===e.id).sort((a,b)=>T[a].n.localeCompare(T[b].n)).map(id=>`<option value="${id}">${esc(T[id].n)}</option>`).join("")}</optgroup>`).join("")}</select></details>
  ${navRow(3,null)}`}
 function techCard(id,x,first){const t=T[id],el=techEl(id),ch=D.chosen.includes(id),m=macroById(t.m);
@@ -1267,6 +1274,7 @@ function techHTML(id){const t=T[id],m=macroById(t.m),el=elById(m.el),v=videos[id
  return `<div class="row" style="margin-bottom:12px"><button class="btn alt sm" data-back>← Back</button><span class="spacer"></span>
   ${inDeb?`<button class="btn sm ${ch?"hi":""}" data-choose="${id}">${ch?"✓ Chosen for action step":"Choose for action step"}</button>`:""}
   <button class="btn alt sm" data-act="togglepb">${inPlaybook(id)?"★ In "+esc(schoolLabel())+" playbook":"☆ Add to school playbook"}</button>
+  <button class="btn alt sm" data-act="togglefocus">${isFocus(id)?"◎ School focus":"◎ Make school focus"}</button>
   <button class="btn alt sm" data-act="edittech">✎ Edit</button><button class="btn alt sm" data-act="printcard">Print card</button>
   <button class="btn hi sm" data-act="printsheet">Print / save as PDF</button></div>
  <div class="thead"><div class="crumbs">${el.n} › ${esc(m.n)}</div>${badges(id)}<h1>${esc(t.n)}</h1><p>${esc(t.p)}</p></div>
@@ -1386,9 +1394,10 @@ function parseTime(t){const m=String(t).trim().match(/^(?:(\d+):)?(\d{1,2}):(\d{
    SAVED CONVERSATIONS (teachers, timelines, follow-ups)
    ===================================================================== */
 let teachTab="teachers";
-function tabsHTML(){return `<div class="tabs"><button class="${teachTab==="teachers"?"on":""}" data-tab="teachers">Teachers</button><button class="${teachTab==="patterns"?"on":""}" data-tab="patterns">Patterns</button></div>`}
+function tabsHTML(){return `<div class="tabs"><button class="${teachTab==="teachers"?"on":""}" data-tab="teachers">Teachers</button><button class="${teachTab==="patterns"?"on":""}" data-tab="patterns">Patterns</button><button class="${teachTab==="walks"?"on":""}" data-tab="walks">Learning walks</button></div>`}
 function savedHTML(){
  if(teachTab==="patterns")return tabsHTML()+patternsHTML();
+ if(teachTab==="walks")return tabsHTML()+walksTabHTML();
  const byT={};saved.forEach(s=>{const k=s.teacher||"(No teacher name)";(byT[k]=byT[k]||[]).push(s)});
  const names=Object.keys(byT).sort();
  return `${backupNag()}${tabsHTML()}<div class="row"><h1>Teachers &amp; follow-ups</h1><span class="spacer"></span><label class="btn alt sm" style="display:inline-block">Open a saved conversation file<input type="file" accept=".docx,.html,.htm,.json" id="impConv" style="display:none"></label></div>
@@ -1403,6 +1412,7 @@ function settingsHTML(){
  return `<div class="row"><button class="btn alt sm" data-go="more">← More</button></div><h1 style="margin-top:10px">Settings</h1>
  <p class="lead">Your school’s branding, playbook, SharePoint saving and backups. Everything you add lives in this browser – download a backup file regularly.</p>
  ${brandingHTML()}
+ ${focusSettingsHTML()}
  <div class="card" style="margin-top:14px"><h2>School playbook</h2>
   <div><div class="small muted">Mark techniques with “☆ Add to school playbook” on any technique page. Playbook techniques are badged, weighted first in the best bets, and can be printed as a staff booklet or wall cards.</div></div>
   ${pb.length?`<div style="margin-top:12px">${ELEMENTS.map(e=>{const ids=pb.filter(id=>techEl(id)===e.id);return ids.length?`<div class="small muted" style="margin-top:6px">${e.n}</div>${ids.map(id=>`<div class="row" style="border-bottom:1px solid var(--line);padding:4px 0"><a href="#" data-tech="${id}">${esc(T[id].n)}</a><span class="muted small">${esc(macroById(T[id].m).n)}</span><span class="spacer"></span><button class="btn ghost" data-unpb="${id}">Remove</button></div>`).join("")}`:""}).join("")}</div>
@@ -1413,7 +1423,7 @@ function settingsHTML(){
   <div class="card"><h2>Backup file</h2>
    <div class="row" style="gap:20px;margin-bottom:10px"><div><div class="kpi">${saved.length}</div><div class="small muted">conversations</div></div><div><div class="kpi">${Object.keys(custom).length}</div><div class="small muted">your techniques</div></div><div><div class="kpi">${Object.keys(edits).length}</div><div class="small muted">edited</div></div><div><div class="kpi">${pb.length}</div><div class="small muted">in playbook</div></div><div><div class="kpi">${Object.keys(videos).length}</div><div class="small muted">videos</div></div></div>
    <p class="small muted">${lb?"Last backup downloaded "+new Date(lb).toLocaleString():"No backup downloaded yet."}</p>
-   <div class="row"><button class="btn hi" data-act="backup">Download backup file</button>
+   <div class="row">${fsSupported()?`<button class="btn hi" data-act="spbackup">Save backup to SharePoint</button><button class="btn alt" data-act="backup">Download backup file</button>`:`<button class="btn hi" data-act="backup">Download backup file</button>`}
    <label class="btn alt" style="display:inline-block">Restore from backup…<input type="file" accept=".json" id="restoreFile" style="display:none"></label></div>
    <p class="small muted" style="margin-top:10px">Keep the backup in your SharePoint or OneDrive coaching folder. Restoring lets you merge or replace. A backup is also a way to share your school’s playbook and techniques with other coaches.</p>
   </div>
@@ -1426,6 +1436,7 @@ function settingsHTML(){
    <div id="spConnect"></div>
   </div>
  </div>
+ ${sheetSettingsHTML()}
  <div class="card" style="margin-top:14px"><h2>Debrief timer</h2><label class="chk" style="margin-bottom:8px"><input type="checkbox" id="timerOn" ${settings.timerOn?"checked":""}> Show a timer during debriefs</label><div class="row"><label class="f" style="margin:0">Debrief length (minutes)</label><input class="t" id="timerMins" type="number" min="5" max="60" value="${settings.timerMins||20}" style="width:90px"><span class="small muted">Phases: noticing 15% · reflection 15% · goals 20% · technique 15% · model / show 35%</span></div></div>
 `;
 }
@@ -1447,9 +1458,9 @@ function patternsHTML(){
  const avg=f=>obsL.length?obsL.reduce((a,s)=>a+f(s),0)/obsL.length:null;
  const volL=obsL.filter(s=>s.volPct!==null);
  const elRows=countBy(L,s=>[...new Set(s.macros.map(m=>macroById(m)&&macroById(m).el).filter(Boolean))]);
- return `<div class="row"><h1>Whole-school patterns</h1><span class="spacer"></span><button class="btn alt" data-act="csv">Export CSV</button></div>
+ return `<div class="row"><h1>Whole-school patterns</h1><span class="spacer"></span><button class="btn hi" data-act="termreport">Download term report (Word)</button><button class="btn alt" data-act="csv">Export CSV</button></div>
  ${schoolBarHTML()}<p class="lead">What comes up across saved conversations${schoolOn&&schoolView.length?` – yours plus ${schoolView.length} colleague backup${schoolView.length>1?"s":""}`:" in this browser"}. Use it with leaders to choose the next practice to codify and to plan professional learning. Exports are anonymised unless you choose otherwise.</p>
- <div class="row" style="margin-bottom:14px"><label class="f" style="margin:0">From</label><input class="t" type="date" id="pFrom" value="${esc(patFilter.from)}" style="width:auto"><label class="f" style="margin:0">To</label><input class="t" type="date" id="pTo" value="${esc(patFilter.to)}" style="width:auto"><label class="chk"><input type="checkbox" id="pNames" ${patFilter.names?"checked":""}> Include teacher names in the export</label></div>
+ <div class="row" style="margin-bottom:14px"><label class="f" style="margin:0">From</label><input class="t" type="date" id="pFrom" value="${esc(patFilter.from)}" style="width:auto"><label class="f" style="margin:0">To</label><input class="t" type="date" id="pTo" value="${esc(patFilter.to)}" style="width:auto"><label class="chk"><input type="checkbox" id="pNames" ${patFilter.names?"checked":""}> Include teacher names in the export and term report</label></div>
  <div class="kgrid" style="margin-bottom:14px">
   <div class="kbox"><div class="kpi">${L.length}</div><div class="small muted">conversations</div></div>
   <div class="kbox"><div class="kpi">${teachers.size}</div><div class="small muted">teachers</div></div>
@@ -1465,7 +1476,7 @@ function patternsHTML(){
   <div class="card"><h3>Techniques chosen as action steps</h3>${barsHTML(countBy(L,s=>s.chosen),k=>T[k]?T[k].n:k)}</div>
   <div class="card"><h3>Follow-up outcomes</h3>${fus.length?barsHTML(LEVELS.map(([k,l])=>[l,lvl(k)]),k=>k,fus.length):`<p class="small muted">No follow-ups recorded yet.</p>`}</div>
   <div class="card"><h3>Most common goals</h3>${barsHTML(countBy(L,s=>{const g=(s.goals||[]).find(x=>x.id===s.goal);return g?[g.pid?GOALS[g.pid]:g.text]:[]}),k=>k)}</div>
- </div>`;
+ </div>${focusPatternsHTML(L,walkData())}${walksPatternsCard()}`;
 }
 function csvExport(){
  const L=patternData();const codes={};let n=0;
@@ -1536,7 +1547,7 @@ function changeOf(pts,m){const ok=pts.filter(p=>p.v!=null&&!isNaN(p.v));if(ok.le
  const trend=Math.abs(b-a)/base<0.1?"same":((b-a)*m.dir>0?"up":"down");return {a,b,trend}}
 /* charts – colours given explicitly so they also render into Word files */
 function lineChartSVG(pts,m,opt={}){
- const W=opt.w||340,H=opt.h||170,L=48,R=20,Tp=22,B=34,col=opt.col||"#2A6DB8",navy=opt.navy||"#012C5F";
+ const W=opt.w||340,H=opt.h||170,L=48,R=20,Tp=22,B=34,col=opt.col||(settings.theme||THEME_DEFAULT).accent,navy=opt.navy||(settings.theme||THEME_DEFAULT).dark;
  const vals=pts.map(p=>p.v==null||isNaN(p.v)?null:p.v),ok=vals.filter(v=>v!=null);if(!ok.length)return "";
  let mx=Math.max(...ok),mn=0;mx=m.k==="vol"?100:(mx<=0?1:mx*1.15);
  const n=pts.length,X=i=>L+(n>1?i*(W-L-R)/(n-1):(W-L-R)/2),Y=v=>Tp+(1-(v-mn)/(mx-mn))*(H-Tp-B);
@@ -1646,9 +1657,9 @@ let schoolView=(()=>{try{return JSON.parse(localStorage.getItem("cdp_school")||"
 let schoolOn=schoolView.length>0;
 function saveSchool(){try{localStorage.setItem("cdp_school",JSON.stringify(schoolView));return true}catch(e){toast("These backups are too large to keep in this browser – they’ll be used until you close Blueprint.",6000);return false}}
 async function addSchoolBackups(files){let added=0,skipped=0;
- for(const f of files){try{const j=JSON.parse(await readFile(f));const list=(j.saved||[]).filter(s=>s&&s.id).map(norm);if(!list.length){skipped++;continue}
+ for(const f of files){try{const j=JSON.parse(await readFile(f));const list=(j.saved||[]).filter(s=>s&&s.id).map(norm),wl=(j.walks||[]).filter(v=>v&&v.id&&v.obs);if(!list.length&&!wl.length){skipped++;continue}
   const coach=(list.find(s=>s.coach)||{}).coach||f.name.replace(/\.json$/i,"");
-  schoolView=schoolView.filter(x=>x.file!==f.name);schoolView.push({file:f.name,coach,added:today(),saved:list.filter(s=>!s.sample)});added++}catch(e){skipped++}}
+  schoolView=schoolView.filter(x=>x.file!==f.name);schoolView.push({file:f.name,coach,added:today(),saved:list.filter(s=>!s.sample),walks:wl});added++}catch(e){skipped++}}
  saveSchool();schoolOn=true;render();toast(`${added} backup${added===1?"":"s"} added to the school view${skipped?` · ${skipped} file${skipped===1?"":"s"} skipped (not a Blueprint backup)`:""}.`,5000)}
 function schoolRecords(){if(!schoolOn)return [];const own=new Set(saved.map(s=>s.id));const seen=new Set();const out=[];
  schoolView.forEach(b=>b.saved.forEach(s=>{if(own.has(s.id)||seen.has(s.id))return;seen.add(s.id);out.push(s)}));return out}
@@ -1656,7 +1667,365 @@ function schoolBarHTML(){
  return `<div class="card schoolbar"><div class="row" style="align-items:center"><b>School view</b><span class="small muted">Add other coaches’ backup files to see patterns across the whole school. They are used here only – they don’t appear in your Teachers list.</span><span class="spacer"></span>
  <label class="btn alt sm" style="display:inline-block">Add coaches’ backups<input type="file" accept=".json" multiple id="schoolFiles" style="display:none"></label></div>
  ${schoolView.length?`<div class="row" style="margin-top:8px;align-items:center;gap:8px"><label class="small"><input type="checkbox" id="schoolOn" ${schoolOn?"checked":""}> Include colleagues’ records</label>
-  ${schoolView.map((b,i)=>`<span class="tchip">${esc(b.coach)} · ${b.saved.length} cycles <button class="btn ghost" data-rmschool="${i}" aria-label="Remove ${esc(b.coach)}">✕</button></span>`).join("")}</div>`:""}</div>`}
+  ${schoolView.map((b,i)=>`<span class="tchip">${esc(b.coach)} · ${b.saved.length} cycles${(b.walks||[]).length?` · ${b.walks.length} walk visits`:""} <button class="btn ghost" data-rmschool="${i}" aria-label="Remove ${esc(b.coach)}">✕</button></span>`).join("")}</div>`:""}</div>`}
+
+/* =====================================================================
+   LEARNING WALKS · SCHOOL FOCUS · TERM REPORT · TECHNIQUES SPREADSHEET · BACKUP REMINDER
+   ===================================================================== */
+
+/* ---------- school focus technique ---------- */
+const focusTech=()=>{const f=settings.schoolFocus;return f&&f.id&&T[f.id]?f.id:""};
+const isFocus=id=>!!id&&focusTech()===id;
+const focusTerm=()=>(settings.schoolFocus&&settings.schoolFocus.term)||"";
+function setFocus(id){
+ const prev=settings.schoolFocus||{};
+ settings.schoolFocus=id?{id,term:prev.term||"",from:prev.id===id?(prev.from||today()):today()}:null;
+ persist("settings");
+}
+function focusSettingsHTML(){
+ const f=focusTech();
+ return `<div class="card" style="margin-top:14px"><h2>School focus technique</h2>
+ <p class="small muted" style="margin-top:0">One technique the whole school is working on this term. It’s badged across Blueprint, put first in the best bets when it fits the goal, offered as an observation focus, added as look-fors on learning walks, and tracked in Patterns and the term report.</p>
+ <div class="row"><select class="t" id="sfTech" style="flex:2;min-width:220px"><option value="">No school focus</option>${ELEMENTS.map(e=>`<optgroup label="${e.n}">${Object.keys(T).filter(id=>techEl(id)===e.id).sort((a,b)=>T[a].n.localeCompare(T[b].n)).map(id=>`<option value="${id}" ${f===id?"selected":""}>${esc(T[id].n)}</option>`).join("")}</optgroup>`).join("")}</select>
+ <input class="t" id="sfTerm" value="${esc(focusTerm())}" placeholder="When, e.g. Term 1 2027" style="flex:1;min-width:160px"></div>
+ ${f?`<div class="row small" style="margin-top:8px"><a href="#" data-tech="${f}">Open ${esc(T[f].n)}</a><span class="muted">· focus since ${esc(settings.schoolFocus.from||"")}</span></div>`:""}</div>`;
+}
+/* quick-add on the observation focus picker: the focus technique's first linked goal */
+function focusQuickHTML(){
+ const f=focusTech();if(!f)return "";
+ const g=goalsForTech(f)[0];if(!g)return "";
+ const sel=D.obsFocus||[];if(sel.length>=2||sel.some(x=>x.type==="goal"&&x.id===g.pid))return "";
+ return `<div class="row small" style="margin-top:8px;gap:8px"><span class="pill sf">◎ School focus</span><span>${esc(T[f].n)}</span><button class="btn alt sm" data-pickfocus="goal|${g.pid}">Look for this today</button></div>`;
+}
+/* step 4 note when the focus technique isn't one of the best bets shown */
+function focusBetNote(shownIds){
+ const f=focusTech();if(!f||shownIds.includes(f)||D.chosen.includes(f))return "";
+ return `<div class="small" style="margin-top:10px"><span class="pill sf">◎ School focus</span> ${esc(T[f].n)} isn’t a best bet for this goal. <a href="#" data-tech="${f}">Open the play</a> or <a href="#" data-choose="${f}">choose it anyway</a>.</div>`;
+}
+function focusPatternsHTML(L,WL){
+ const f=focusTech();if(!f)return "";
+ const t=T[f], cyc=L.filter(s=>(s.chosen||[]).includes(f));
+ const rt=L.flatMap(s=>(s.followups||[]).map(x=>((x.ratings||{})[f]||{}).level).filter(Boolean));
+ const fv=WL.filter(v=>v.focus===f), seen=fv.filter(v=>Object.values(v.lf||{}).some(Boolean)).length;
+ const lfRows=(t.look||[]).map(l=>[l,fv.filter(v=>(v.lf||{})[l]).length]);
+ return `<div class="card sfcard" style="margin-top:14px"><div class="row"><h3 style="margin:0">◎ School focus – ${esc(t.n)}</h3>${focusTerm()?`<span class="small muted">${esc(focusTerm())}</span>`:""}<span class="spacer"></span><a class="small" href="#" data-tech="${f}">Open the play</a></div>
+ <div class="kgrid" style="margin-top:10px">
+  <div class="kbox"><div class="kpi">${cyc.length}</div><div class="small muted">of ${L.length} cycles chose it as an action step</div></div>
+  <div class="kbox"><div class="kpi">${rt.length?Math.round(rt.filter(x=>x==="secure").length/rt.length*100)+"%":"–"}</div><div class="small muted">secure at follow-up (${rt.length} rating${rt.length===1?"":"s"})</div></div>
+  <div class="kbox"><div class="kpi">${fv.length?Math.round(seen/fv.length*100)+"%":"–"}</div><div class="small muted">of walk visits saw a look-for (${fv.length} visit${fv.length===1?"":"s"})</div></div>
+ </div>
+ ${fv.length?`<div class="small muted" style="margin:10px 0 4px">Look-fors seen on learning walks</div>${barsHTML(lfRows,k=>k,fv.length)}`:""}</div>`;
+}
+
+/* ---------- learning walks ---------- */
+let walks=LS.get("cdp_walks",[]);
+let W=LS.get("cdp_walkdraft",null);
+const YEARS=["Foundation","Year 1","Year 2","Year 3","Year 4","Year 5","Year 6","Year 7","Year 8","Year 9","Year 10","Year 11","Year 12","Specialist","Mixed"];
+function blankVisit(prev){return {id:"w"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),walk:prev?prev.walk:"walk"+Date.now().toString(36),date:prev?prev.date:today(),walker:prev?prev.walker:(settings.walker||""),room:"",year:"",obs:blankObs(),lf:{},note:"",focus:focusTech()}}
+function saveW(){LS.set("cdp_walkdraft",W)}
+function persistWalks(){LS.set("cdp_walks",walks);markChanged()}
+const visitHasData=v=>!!v&&(v.obs.events.length||Object.values(v.lf||{}).some(Boolean)||(v.note||"").trim());
+function walkTap(k,delta){
+ const o=W.obs;
+ if(delta>0&&!o.startedAt){o.startedAt=Date.now();if(!o.elapsed)toast("Timer started.",2000)}
+ o.counts[k]=Math.max(0,(o.counts[k]||0)+delta);
+ if(delta>0)o.events.push({k,t:Math.round(obsElapsed(o))});
+ else{for(let i=o.events.length-1;i>=0;i--)if(o.events[i].k===k){o.events.splice(i,1);break}}
+ saveW();rerenderKeep();
+}
+function walkHTML(){
+ if(!W){W=blankVisit();saveW()}
+ if(!W.focus&&focusTech()&&!visitHasData(W))W.focus=focusTech();
+ const o=W.obs,s=obsStats(o),run=!!o.startedAt,f=W.focus&&T[W.focus]?W.focus:"";
+ const done=walks.filter(v=>v.walk===W.walk).length;
+ const grp=g=>`<h3 style="margin:14px 0 8px">${g.g}</h3><div class="tally">${g.items.map(i=>`<div class="tbtn" data-wtap="${i.k}" role="button" tabindex="0"><div class="tn">${esc(i.n)}</div><div class="td">${esc(i.d)}${i.cfu?`<span class="cfutag">${i.cfu==="whole"?"also a whole-class check":"also a check (one student)"}</span>`:""}</div><div class="tc">${o.counts[i.k]||0}</div><button class="tminus" data-wuntap="${i.k}" aria-label="Undo ${esc(i.n)}">−1</button></div>`).join("")}</div>`;
+ const names=[...new Set(teacherNames().concat(walks.map(v=>v.room)))].filter(Boolean).sort();
+ return `<div class="row"><button class="btn alt sm" data-act="walkexit">← Learning walks</button><span class="spacer"></span>${done?`<span class="pill">${done} room${done>1?"s":""} saved on this walk</span>`:""}</div>
+ <h1 style="margin-top:10px">Learning walk</h1>
+ <p class="lead">A short visit of 5 to 10 minutes. Tally what you see – there’s no debrief. Each visit adds to the school’s patterns.</p>
+ <div class="card"><div class="ldgrid">
+  <div><label class="f">Teacher or room</label><input class="t" data-wf="room" list="wnames" value="${esc(W.room)}" placeholder="e.g. Room 12 or Ms Rivera"><datalist id="wnames">${names.map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div>
+  <div><label class="f">Year level</label><select class="t" data-wf="year"><option value="">Choose…</option>${YEARS.map(y=>`<option ${W.year===y?"selected":""}>${y}</option>`).join("")}</select></div>
+  <div><label class="f">Date</label><input class="t" type="date" data-wf="date" value="${esc(W.date)}"></div>
+  <div><label class="f">Walker</label><input class="t" data-wf="walker" value="${esc(W.walker)}" placeholder="Your name"></div>
+ </div></div>
+ ${f?`<div class="card lfcard" style="margin-top:12px"><div class="row"><span class="pill sf">◎ School focus</span><h3 style="margin:0">${esc(T[f].n)}</h3><span class="small muted">tap each look-for you see</span></div><div class="lfchips">${(T[f].look||[]).map((l,i)=>`<button class="lfchip ${W.lf[l]?"on":""}" data-wlf="${i}">${W.lf[l]?"✓ ":""}${esc(l)}</button>`).join("")}</div></div>`:""}
+ <div class="obstop" style="margin-top:12px"><div class="clock" id="walkClock">${mmss(s.secs)}</div>
+  <button class="btn ${run?"alt":"hi"}" data-act="wtoggle">${run?"Pause":(s.secs?"Resume":"Start timer")}</button>${s.secs?`<button class="btn ghost" data-act="wreset">Reset</button>`:""}
+  <span class="spacer"></span><span class="small muted">The timer starts on your first tap.</span></div>
+ ${grp(TALLY[0])}${grp(TALLY[1])}<details class="othert"><summary>Teacher interactions</summary>${grp(TALLY[2])}</details>
+ <div class="card" style="margin-top:14px"><label class="f">Quick note (optional)</label><textarea class="t" data-wf="note" placeholder="A strength to share, a question to follow up">${esc(W.note)}</textarea></div>
+ ${s.secs>=60?`<div class="small muted" style="margin-top:10px">This visit: ${mmss(s.secs)} · ${s.otrPerMin.toFixed(1)} responses a minute · ${s.whole} whole-class · ${s.checks} checks for understanding</div>`:""}
+ <div class="row" style="margin-top:14px"><button class="btn ghost" data-act="wdiscard">Clear this visit</button><span class="spacer"></span><button class="btn alt" data-act="wfinish">Save and finish the walk</button><button class="btn hi" data-act="wnext">Save – next room →</button></div>`;
+}
+setInterval(()=>{const c=$("#walkClock");if(c&&W)c.textContent=mmss(obsElapsed(W.obs))},1000);
+function storeVisit(){
+ if(!visitHasData(W))return false;
+ const o=W.obs;if(o.startedAt){o.elapsed=obsElapsed(o);o.startedAt=null}
+ if(W.walker){settings.walker=W.walker;persist("settings")}
+ const c=JSON.parse(JSON.stringify(W));const i=walks.findIndex(v=>v.id===c.id);if(i>=0)walks[i]=c;else walks.push(c);persistWalks();return true;
+}
+function walkData(){
+ const seen=new Set(),out=[];
+ walks.concat(schoolOn?schoolView.flatMap(b=>(b.walks||[]).map(v=>Object.assign({},v,{colleague:b.coach}))):[]).forEach(v=>{if(!v||seen.has(v.id))return;seen.add(v.id);out.push(v)});
+ return out.filter(v=>(!patFilter.from||v.date>=patFilter.from)&&(!patFilter.to||v.date<=patFilter.to)).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+}
+function walkSummary(L){
+ const st=L.map(v=>({v,s:obsStats(v.obs)})).filter(x=>x.s&&x.s.secs>=60);
+ const avg=(f,list)=>{const a=(list||st).map(x=>f(x.s)).filter(v=>v!=null&&isFinite(v));return a.length?a.reduce((p,c)=>p+c,0)/a.length:null};
+ const byYear={};st.forEach(x=>{const y=x.v.year||"Not recorded";(byYear[y]=byYear[y]||[]).push(x)});
+ const yrRows=Object.entries(byYear).map(([y,l])=>({y,n:l.length,otr:avg(s=>s.otrPerMin,l),whole:avg(s=>s.whole/s.mins*10,l),checks:avg(s=>s.checks/s.mins*10,l),vol:avg(s=>s.volPct==null?null:s.volPct*100,l)})).sort((a,b)=>{const ia=YEARS.indexOf(a.y),ib=YEARS.indexOf(b.y);return (ia<0?99:ia)-(ib<0?99:ib)});
+ const seenPct=TALLY_ITEMS.filter(i=>i.otr||i.k==="check").map(i=>[i.n,L.length?Math.round(L.filter(v=>(v.obs.counts[i.k]||0)>0).length/L.length*100):0]).sort((a,b)=>b[1]-a[1]);
+ return {n:L.length,timed:st.length,rooms:new Set(L.map(v=>(v.room||"").trim().toLowerCase()).filter(Boolean)).size,
+  otr:avg(s=>s.otrPerMin),whole:avg(s=>s.whole/s.mins*10),checks:avg(s=>s.checks/s.mins*10),vol:avg(s=>s.volPct==null?null:s.volPct*100),gap:avg(s=>s.gapMins),yrRows,seenPct};
+}
+const f1=v=>v==null?"–":v.toFixed(1), fpct=v=>v==null?"–":Math.round(v)+"%";
+function walksTabHTML(){
+ const L=walkData(),S=walkSummary(L),cont=visitHasData(W);
+ const box=(v,l)=>`<div class="kbox"><div class="kpi">${v}</div><div class="small muted">${l}</div></div>`;
+ return `<div class="row"><h1>Learning walks</h1><span class="spacer"></span><button class="btn hi" data-act="walkstart">${cont?"Continue the learning walk":"Start a learning walk"}</button></div>
+ <p class="lead">Short visits across many rooms – 5 to 10 minutes each, using the same tallies as an observation. The patterns show how often whole-school practices are happening, not how any one teacher is going.</p>
+ ${schoolView.length?schoolBarHTML():""}
+ <div class="row" style="margin-bottom:14px"><label class="f" style="margin:0">From</label><input class="t" type="date" id="pFrom" value="${esc(patFilter.from)}" style="width:auto"><label class="f" style="margin:0">To</label><input class="t" type="date" id="pTo" value="${esc(patFilter.to)}" style="width:auto"></div>
+ ${L.length?`<div class="kgrid" style="margin-bottom:14px">${box(S.n,"visits")}${box(S.rooms,"rooms")}${box(f1(S.otr),"avg responses / min")}${box(f1(S.whole),"whole-class responses / 10 min")}${box(f1(S.checks),"checks for understanding / 10 min")}${box(fpct(S.vol),"answers from volunteers")}</div>
+ <div class="grid g2">
+  <div class="card"><h3>Practices seen – % of visits</h3>${barsHTML(S.seenPct.filter(r=>r[1]>0),k=>k,100).replace(/<b>(\d+)<\/b>/g,"<b>$1%</b>")}</div>
+  <div class="card"><h3>By year level</h3>${S.yrRows.length?`<table class="mini"><tr><th>Year level</th><th>Visits</th><th>Responses / min</th><th>Whole-class / 10 min</th><th>Checks / 10 min</th></tr>${S.yrRows.map(r=>`<tr><td>${esc(r.y)}</td><td>${r.n}</td><td>${f1(r.otr)}</td><td>${f1(r.whole)}</td><td>${f1(r.checks)}</td></tr>`).join("")}</table>`:`<p class="small muted">Visits of a minute or more appear here.</p>`}</div>
+ </div>
+ ${focusPatternsHTML(patternData(),L)}
+ <div class="card" style="margin-top:14px"><h3>Visits</h3><table class="mini"><tr><th>Date</th><th>Teacher or room</th><th>Year</th><th>Minutes</th><th>Responses / min</th><th>Checks</th><th>Note</th><th></th></tr>
+ ${L.slice(0,60).map(v=>{const s=obsStats(v.obs);return `<tr><td>${esc(v.date)}</td><td>${esc(v.room||"–")}${v.colleague?` <span class="muted small">(${esc(v.colleague)})</span>`:""}</td><td>${esc(v.year||"–")}</td><td>${(s.secs/60).toFixed(0)}</td><td>${s.secs>=60?s.otrPerMin.toFixed(1):"–"}</td><td>${s.checks}</td><td class="small">${esc((v.note||"").slice(0,80))}</td><td>${v.colleague?"":`<button class="btn ghost" data-rmwalk="${v.id}" aria-label="Delete visit">✕</button>`}</td></tr>`}).join("")}</table>${L.length>60?`<p class="small muted">Showing the latest 60 of ${L.length}.</p>`:""}</div>`
+ :`<div class="card"><p style="margin:0">No visits yet${patFilter.from||patFilter.to?" in these dates":""}. Start a learning walk, visit a few rooms for 5–10 minutes each and tap what you see.</p></div>`}`;
+}
+function walksPatternsCard(){
+ const L=walkData();if(!L.length)return "";const S=walkSummary(L);
+ return `<div class="card" style="margin-top:14px"><div class="row"><h3 style="margin:0">Learning walks</h3><span class="small muted">${S.n} visit${S.n===1?"":"s"} · ${S.rooms} room${S.rooms===1?"":"s"}</span><span class="spacer"></span><button class="btn alt sm" data-tab="walks">See the walks</button></div>
+ <div class="small" style="margin-top:6px">${f1(S.otr)} responses a minute · ${f1(S.whole)} whole-class responses and ${f1(S.checks)} checks for understanding every 10 minutes · ${fpct(S.vol)} of answers from volunteers</div></div>`;
+}
+
+/* ---------- term report (Word) ---------- */
+function rangeLabel(){return patFilter.from||patFilter.to?`${patFilter.from||"the start"} to ${patFilter.to||today()}`:"all records"}
+async function termReport(){
+ const L=patternData().map(norm), WL=walkData();
+ if(!L.length&&!WL.length){toast("There’s nothing in these dates yet.");return}
+ const codes={};let cn=0;const code=t=>patFilter.names?t:(codes[t]=codes[t]||"Teacher "+(++cn));
+ const fus=L.flatMap(s=>(s.followups||[]).flatMap(f=>Object.values(f.ratings||{}).map(r=>r.level).filter(Boolean)));
+ const obsL=L.filter(s=>s.obs&&obsStats(s.obs).secs>=60).map(s=>obsStats(s.obs));
+ const av=f=>{const a=obsL.map(f).filter(v=>v!=null&&isFinite(v));return a.length?a.reduce((p,c)=>p+c,0)/a.length:null};
+ const byT={};L.forEach(s=>{(byT[tKey(s)]=byT[tKey(s)]||[]).push(s)});
+ const trows=Object.keys(byT).sort().map(n=>{const list=byT[n].sort((a,b)=>(a.date||"").localeCompare(b.date||""));const last=list[list.length-1];
+  const g=(last.goals||[]).find(x=>x.id===last.goal);
+  const st=list.map(s=>s.obs&&obsElapsed(s.obs)>=60?obsStats(s.obs):null);
+  const ch=PROG_MEASURES.map(m=>changeOf(st.map(x=>({v:x?m.val(x):null})),m)).filter(Boolean);
+  return `<tr><td><b>${esc(code(n))}</b></td><td class="num">${list.length}</td><td>${esc(g?g.text:"–")}</td><td>${(last.chosen||[]).filter(id=>T[id]).map(id=>`${esc(T[id].n)}${latestLevel(last,id)?` <span class="meta">(${levelName(latestLevel(last,id))})</span>`:""}`).join("<br>")||"–"}</td><td>${ch.length?`${ch.filter(c=>c.trend==="up").length} of ${ch.length}`:"–"}</td><td>${esc(dueInfo(list).txt)}</td></tr>`}).join("");
+ const top=(rows,lab,h)=>rows.length?`<table><tr><th style="width:82%">${h}</th><th style="width:18%">Count</th></tr>${rows.slice(0,5).map(([k,v])=>`<tr><td>${esc(lab(k))}</td><td class="num">${v}</td></tr>`).join("")}</table>`:`<p class="meta">None recorded.</p>`;
+ const S=walkSummary(WL), f=focusTech();
+ let focus="";
+ if(f){const cyc=L.filter(s=>(s.chosen||[]).includes(f)).length,rt=L.flatMap(s=>(s.followups||[]).map(x=>((x.ratings||{})[f]||{}).level).filter(Boolean)),fv=WL.filter(v=>v.focus===f),seen=fv.filter(v=>Object.values(v.lf||{}).some(Boolean)).length;
+  focus=`<h2>School focus – ${esc(T[f].n)}${focusTerm()?` (${esc(focusTerm())})`:""}</h2><table><tr><th>Cycles with it as the action step</th><th>Secure at follow-up</th><th>Walk visits where a look-for was seen</th></tr><tr><td class="num">${cyc} of ${L.length}</td><td class="num">${rt.length?Math.round(rt.filter(x=>x==="secure").length/rt.length*100)+"% of "+rt.length:"–"}</td><td class="num">${fv.length?seen+" of "+fv.length:"–"}</td></tr></table>
+  ${fv.length?`<table style="margin-top:6px"><tr><th style="width:82%">Look-for</th><th style="width:18%">Visits seen</th></tr>${(T[f].look||[]).map(l=>`<tr><td>${esc(l)}</td><td class="num">${fv.filter(v=>(v.lf||{})[l]).length}</td></tr>`).join("")}</table>`:""}`}
+ const walk=WL.length?`<h2>Learning walks</h2><table><tr><th>Visits</th><th>Rooms</th><th>Responses / min</th><th>Whole-class / 10 min</th><th>Checks / 10 min</th><th>Answers from volunteers</th></tr><tr><td class="num">${S.n}</td><td class="num">${S.rooms}</td><td class="num">${f1(S.otr)}</td><td class="num">${f1(S.whole)}</td><td class="num">${f1(S.checks)}</td><td class="num">${fpct(S.vol)}</td></tr></table>
+  ${S.yrRows.length?`<table style="margin-top:6px"><tr><th style="width:32%">Year level</th><th style="width:14%">Visits</th><th style="width:18%">Responses / min</th><th style="width:18%">Whole-class / 10 min</th><th style="width:18%">Checks / 10 min</th></tr>${S.yrRows.map(r=>`<tr><td>${esc(r.y)}</td><td class="num">${r.n}</td><td class="num">${f1(r.otr)}</td><td class="num">${f1(r.whole)}</td><td class="num">${f1(r.checks)}</td></tr>`).join("")}</table>`:""}
+  <table style="margin-top:6px"><tr><th style="width:82%">Practice seen</th><th style="width:18%">% of visits</th></tr>${S.seenPct.filter(r=>r[1]>0).slice(0,7).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${v}%</td></tr>`).join("")}</table>`:"";
+ const html=`<div class="page">${head("Coaching term report",(focusTerm()&&!patFilter.from&&!patFilter.to?focusTerm():rangeLabel()))}
+ <p>Coaching and learning walk summary for ${esc(rangeLabel())}${schoolOn&&schoolView.length?`, including ${schoolView.length} colleague backup${schoolView.length>1?"s":""}`:""}.</p>
+ <h2>At a glance</h2><table><tr><th>Coaching cycles</th><th>Teachers coached</th><th>Follow-ups</th><th>Secure at follow-up</th><th>Responses / min</th><th>Answers from volunteers</th></tr>
+ <tr><td class="num">${L.length}</td><td class="num">${Object.keys(byT).length}</td><td class="num">${L.reduce((a,s)=>a+(s.followups||[]).length,0)}</td><td class="num">${fus.length?Math.round(fus.filter(x=>x==="secure").length/fus.length*100)+"%":"–"}</td><td class="num">${f1(av(s=>s.otrPerMin))}</td><td class="num">${fpct(av(s=>s.volPct==null?null:s.volPct*100))}</td></tr></table>
+ ${trows?`<h2>Teachers</h2><table><tr><th style="width:14%">Teacher</th><th style="width:10%">Cycles</th><th style="width:26%">Current goal</th><th style="width:22%">Action step (latest rating)</th><th style="width:12%">Measures up</th><th style="width:16%">Next follow-up</th></tr>${trows}</table>`:""}
+ ${focus}
+ ${L.length?`<h2>What came up</h2><h3>Most common goals</h3>${top(countBy(L,s=>{const g=(s.goals||[]).find(x=>x.id===s.goal);return g?[g.pid?GOALS[g.pid]:g.text]:[]}),k=>k,"Goal")}
+ <h3>Focus areas</h3>${top(countBy(L,s=>s.macros),k=>macroById(k)?macroById(k).n:k,"Focus area")}
+ <h3>Techniques chosen as action steps</h3>${top(countBy(L,s=>s.chosen),k=>T[k]?T[k].n:k,"Technique")}`:""}
+ ${walk}
+ <h2>Next steps for discussion</h2><div class="lines">${"<div class='l'></div>".repeat(6)}</div></div>`;
+ if(await downloadDocx(`${today()} Coaching term report.docx`,html,"Coaching term report"))toast("Term report downloaded as a Word document.",4000);
+}
+
+/* ---------- techniques spreadsheet (download + import) ---------- */
+const XL_COLS=(()=>{const c=[["ID (don't change)",16],["Technique name",28],["VTLM 2.0 element",18],["Focus area",26],["Also supports",24],["Purpose",44],["Why it works",44]];
+ for(let i=1;i<=5;i++)c.push([`Step ${i} – title`,20],[`Step ${i} – what the teacher does`,40]);
+ return c.concat([["Look-fors (one per line)",36],["Common pitfalls (one per line)",36],["Rehearse it in the debrief",40],["Related reading / source",34],["Best bet for (common problems – from the focus areas)",40],["Changes – describe or make your edits",44]])})();
+function xlsxBlob(rows,guide){
+ const xe=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"");
+ const col=i=>{let s="";i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
+ const cell=(v,r,c,st)=>`<c r="${col(c)}${r}" t="inlineStr" s="${st}"><is><t xml:space="preserve">${xe(v)}</t></is></c>`;
+ const last=XL_COLS.length-1;
+ const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane xSplit="2" ySplit="1" topLeftCell="C2" activePane="bottomRight" state="frozen"/></sheetView></sheetViews><cols>${XL_COLS.map((c,i)=>`<col min="${i+1}" max="${i+1}" width="${c[1]}" customWidth="1"/>`).join("")}</cols><sheetData><row r="1" ht="42" customHeight="1">${XL_COLS.map((c,i)=>cell(c[0],1,i,i===last?5:1)).join("")}</row>${rows.map((row,ri)=>`<row r="${ri+2}">${row.map((v,i)=>cell(v,ri+2,i,i===0||i===last-1?3:i===last?4:i===1?6:2)).join("")}</row>`).join("")}</sheetData><autoFilter ref="A1:${col(last)}${rows.length+1}"/></worksheet>`;
+ const gsheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="110" customWidth="1"/></cols><sheetData>${guide.map((g,i)=>`<row r="${i+1}">${cell(g[0],i+1,0,g[1]?7:8)}</row>`).join("")}</sheetData></worksheet>`;
+ const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="5"><font><sz val="9"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font><font><sz val="9"/><color rgb="FF5A6878"/><name val="Arial"/></font><font><b/><sz val="9"/><name val="Arial"/></font><font><b/><sz val="11"/><color rgb="FF012C5F"/><name val="Arial"/></font></fonts>
+<fills count="6"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF012C5F"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE7EDF4"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF2CC"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFB7791F"/></patternFill></fill></fills>
+<borders count="2"><border/><border><left style="thin"><color rgb="FFB5D3F1"/></left><right style="thin"><color rgb="FFB5D3F1"/></right><top style="thin"><color rgb="FFB5D3F1"/></top><bottom style="thin"><color rgb="FFB5D3F1"/></bottom></border></borders>
+<cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="9"><xf/>
+<xf fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="center"/></xf>
+<xf fontId="0" borderId="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>
+<xf fontId="2" fillId="3" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>
+<xf fontId="0" fillId="4" borderId="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>
+<xf fontId="1" fillId="5" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="center"/></xf>
+<xf fontId="3" borderId="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>
+<xf fontId="4" applyFont="1" applyAlignment="1"><alignment wrapText="1"/></xf>
+<xf fontId="0" applyAlignment="1"><alignment wrapText="1"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+ const enc=new TextEncoder(),ns='xmlns="http://schemas.openxmlformats.org/package/2006/relationships"',R="http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+ return DOCX.zip([
+  ["[Content_Types].xml",enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`)],
+  ["_rels/.rels",enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships ${ns}><Relationship Id="rId1" Type="${R}/officeDocument" Target="xl/workbook.xml"/></Relationships>`)],
+  ["xl/workbook.xml",enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${R}"><sheets><sheet name="How to use" sheetId="1" r:id="rId2"/><sheet name="Techniques" sheetId="2" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="1" hidden="1">Techniques!$A$1:$${col(last)}$${rows.length+1}</definedName></definedNames></workbook>`)],
+  ["xl/_rels/workbook.xml.rels",enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships ${ns}><Relationship Id="rId1" Type="${R}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${R}/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="${R}/styles" Target="styles.xml"/></Relationships>`)],
+  ["xl/worksheets/sheet1.xml",enc.encode(sheet)],["xl/worksheets/sheet2.xml",enc.encode(gsheet)],["xl/styles.xml",enc.encode(styles)]
+ ],"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+}
+function techRows(){
+ const eo=Object.fromEntries(ELEMENTS.map((e,i)=>[e.id,i])),mo=Object.fromEntries(MACROS.map((m,i)=>[m.id,i]));
+ return Object.keys(T).sort((a,b)=>{const ma=macroById(T[a].m)||{},mb=macroById(T[b].m)||{};return (eo[ma.el]-eo[mb.el])||(mo[T[a].m]-mo[T[b].m])||T[a].n.localeCompare(T[b].n)}).map(id=>{
+  const t=T[id],m=macroById(t.m)||{n:"",el:""},el=elById(m.el)||{n:""},st=t.steps||[];
+  const r=[id,t.n,el.n,m.n,(t.also||[]).map(a=>macroById(a)&&macroById(a).n).filter(Boolean).join(", "),t.p||"",t.w||""];
+  for(let i=0;i<5;i++)r.push(st[i]?st[i][0]:"",st[i]?st[i][1]:"");
+  return r.concat([(t.look||[]).join("\n"),(t.pit||[]).join("\n"),t.say||"",t.src||"",probsOfTech(id).map(p=>probById(p)?probById(p).t:"").filter(Boolean).join("\n"),""])});
+}
+async function downloadTechSheet(){
+ const rows=techRows();
+ const guide=[["Blueprint – technique content",1],[`${rows.length} techniques from ${settings.school||"this copy of Blueprint"}, downloaded ${today()}. It includes your school’s edits and added techniques.`,0],["",0],["How to make changes",1],
+  ["1. Edit any white cell. The new wording replaces the old when you load the file back into Blueprint (Settings → Techniques spreadsheet → Update from a spreadsheet).",0],
+  ["2. Look-fors and pitfalls: one per line inside the cell (Alt+Enter on Windows, Option+Enter on Mac).",0],
+  ["3. Focus area and Also supports must use the focus area names exactly as they appear.",0],
+  ["4. Leave the grey columns alone: the ID is how Blueprint matches your row. ‘Best bet for’ is for reference only.",0],
+  ["5. To add a technique, add a row at the bottom with the ID blank. It needs a name, focus area, purpose and at least one step.",0],
+  ["6. To remove a technique your school added, write “Remove” in the Changes column. Built-in techniques can’t be removed.",0],
+  ["7. Notes in the Changes column are shown when you load the file, so you can make those edits in Blueprint.",0],["",0],
+  ["Blueprint shows every change and asks you to confirm before anything is updated.",1]];
+ const ok=await download(`Blueprint techniques ${today()}.xlsx`,xlsxBlob(rows,guide),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+ if(ok!==false)toast("Techniques spreadsheet downloaded.",4000);
+}
+async function unzipText(buf,want){
+ const b=new Uint8Array(buf),dv=new DataView(b.buffer,b.byteOffset,b.byteLength),dec=new TextDecoder(),out={};let e=-1;
+ for(let i=b.length-22;i>=0&&i>b.length-70000;i--)if(dv.getUint32(i,true)===0x06054b50){e=i;break}
+ if(e<0)throw new Error("not a zip");
+ const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);
+ for(let k=0;k<n;k++){const meth=dv.getUint16(p+10,true),cs=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),xl=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
+  const name=dec.decode(b.subarray(p+46,p+46+nl));p+=46+nl+xl+cl;if(!want.test(name))continue;
+  const ln=dv.getUint16(lo+26,true),lx=dv.getUint16(lo+28,true),raw=b.subarray(lo+30+ln+lx,lo+30+ln+lx+cs);
+  if(meth===0)out[name]=dec.decode(raw);else if(meth===8)out[name]=await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text()}
+ return out;
+}
+async function readSheetRows(buf){
+ const f=await unzipText(buf,/^xl\/(workbook\.xml|_rels\/workbook\.xml\.rels|sharedStrings\.xml|worksheets\/[^/]+\.xml)$/i);
+ const P=s=>new DOMParser().parseFromString(s,"application/xml");
+ const ss=f["xl/sharedStrings.xml"]?[...P(f["xl/sharedStrings.xml"]).getElementsByTagName("si")].map(si=>[...si.getElementsByTagName("t")].filter(t=>t.parentNode.nodeName!=="rPh").map(t=>t.textContent).join("")):[];
+ const rows=xml=>{const out=[];[...P(xml).getElementsByTagName("row")].forEach(r=>{const ri=+r.getAttribute("r")||out.length+1,row=[];
+  [...r.getElementsByTagName("c")].forEach((c,ci)=>{const ref=c.getAttribute("r")||"";const L=(ref.match(/^[A-Z]+/)||[""])[0];let idx=ci;if(L){idx=0;for(const ch of L)idx=idx*26+ch.charCodeAt(0)-64;idx--}
+   const t=c.getAttribute("t"),v=c.getElementsByTagName("v")[0];let val="";
+   if(t==="s")val=ss[+(v?v.textContent:0)]||"";else if(t==="inlineStr"){val=[...c.getElementsByTagName("t")].map(x=>x.textContent).join("")}else val=v?v.textContent:"";
+   row[idx]=val});out[ri-1]=row});return out.map(r=>r||[])};
+ // prefer the sheet named "Techniques"
+ let target="";
+ if(f["xl/workbook.xml"]&&f["xl/_rels/workbook.xml.rels"]){const wb=P(f["xl/workbook.xml"]),rel=P(f["xl/_rels/workbook.xml.rels"]);
+  const sh=[...wb.getElementsByTagName("sheet")].find(s=>/^techniques$/i.test(s.getAttribute("name")||""));
+  if(sh){const id=sh.getAttribute("r:id")||sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id");const r=[...rel.getElementsByTagName("Relationship")].find(x=>x.getAttribute("Id")===id);if(r)target="xl/"+r.getAttribute("Target").replace(/^\/?xl\//,"").replace(/^\//,"")}}
+ const cands=(target&&f[target]?[target]:[]).concat(Object.keys(f).filter(k=>/^xl\/worksheets\//.test(k)&&k!==target));
+ for(const k of cands){const r=rows(f[k]);if((r[0]||[]).some(h=>/^technique name/i.test(String(h||"").trim())))return r}
+ throw new Error("no technique sheet");
+}
+const TFIELDS=["n","m","also","src","p","w","steps","look","pit","say"];
+const FIELD_LABEL={n:"name",m:"focus area",also:"also supports",src:"source",p:"purpose",w:"why it works",steps:"steps",look:"look-fors",pit:"pitfalls",say:"rehearsal"};
+const pickT=t=>{const o={};TFIELDS.forEach(k=>{o[k]=t[k]==null?(["also","steps","look","pit"].includes(k)?[]:""):t[k]});return o};
+function parseTechRows(rows){
+ const H=(rows[0]||[]).map(h=>String(h||"").toLowerCase().replace(/[–—]/g,"-").replace(/\s+/g," ").trim());
+ const ix=re=>H.findIndex(h=>re.test(h));
+ const C={id:ix(/^id\b/),n:ix(/^technique name/),m:ix(/^focus area/),also:ix(/^also/),p:ix(/^purpose/),w:ix(/^why/),look:ix(/^look.?for/),pit:ix(/pitfall/),say:ix(/^rehearse/),src:ix(/^related|^source/),chg:ix(/^changes/)};
+ const S=[1,2,3,4,5].map(i=>[ix(new RegExp(`^step ${i} - title`)),ix(new RegExp(`^step ${i} - what`))]);
+ const macroByName=s=>{const q=String(s||"").trim().toLowerCase();const m=MACROS.find(x=>x.n.toLowerCase()===q);return m?m.id:""};
+ const parseAlso=v=>{const q=v.toLowerCase(),hits=[];MACROS.forEach(m=>{const i=q.indexOf(m.n.toLowerCase());if(i>=0)hits.push([i,i+m.n.length,m.id])});hits.sort((a,b)=>a[0]-b[0]||b[1]-a[1]);let end=-1;return hits.filter(h=>{if(h[0]<end)return false;end=h[1];return true}).map(h=>h[2])};
+ const g=(r,i)=>i<0?"":String(r[i]==null?"":r[i]).replace(/\r\n/g,"\n").trim();
+ const lines=v=>v.split("\n").map(s=>s.replace(/^[•\-–*]\s*/,"").trim()).filter(Boolean);
+ const res={upd:[],add:[],rm:[],notes:[],skip:[]};
+ rows.slice(1).forEach((r,ri)=>{
+  const id=g(r,C.id),name=g(r,C.n),chg=g(r,C.chg);if(!id&&!name)return;
+  const cur=id&&T[id]?pickT(T[id]):null;
+  if(id&&!cur){res.skip.push(`Row ${ri+2}: ID “${id}” isn’t in this copy of Blueprint`);return}
+  if(/^remove\b/i.test(chg)){if(cur&&T[id].own)res.rm.push(id);else res.skip.push(`${name||id}: built-in techniques can’t be removed`);return}
+  if(chg)res.notes.push([name||id,chg]);
+  const mName=g(r,C.m),m=macroByName(mName);
+  const d={n:name||(cur?cur.n:""),m:m||(cur?cur.m:""),also:C.also<0?(cur?cur.also:[]):parseAlso(g(r,C.also)),
+   p:g(r,C.p)||(cur?cur.p:""),w:C.w<0?(cur?cur.w:""):g(r,C.w),steps:S.map(([a,b])=>[g(r,a),g(r,b)]).filter(s=>s[0]||s[1]),
+   look:C.look<0?(cur?cur.look:[]):lines(g(r,C.look)),pit:C.pit<0?(cur?cur.pit:[]):lines(g(r,C.pit)),say:C.say<0?(cur?cur.say:""):g(r,C.say),src:C.src<0?(cur?cur.src:""):g(r,C.src)};
+  if(mName&&!m)res.skip.push(`${d.n}: focus area “${mName}” not recognised – kept the current one`);
+  d.also=d.also.filter(a=>a!==d.m);
+  if(cur){if(!d.steps.length)d.steps=cur.steps;
+   const same=(k,a,b)=>k==="also"?JSON.stringify([...a].sort())===JSON.stringify([...b].sort()):JSON.stringify(a)===JSON.stringify(b);const diff=TFIELDS.filter(k=>!same(k,d[k],cur[k]));if(diff.length)res.upd.push({id,d,diff});}
+  else{if(!d.m||!d.p||!d.steps.length){res.skip.push(`${d.n}: a new technique needs a focus area, purpose and at least one step`);return}res.add.push({d})}
+ });
+ return res;
+}
+async function importTechSheet(file){
+ let res;try{res=parseTechRows(await readSheetRows(await file.arrayBuffer()))}catch(e){console.error(e);toast("That file isn’t a Blueprint techniques spreadsheet.",5000);return}
+ const n=res.upd.length+res.add.length+res.rm.length;
+ const li=a=>a.map(x=>`<li>${x}</li>`).join("");
+ showModal(`<h2>Update techniques from the spreadsheet</h2>
+ ${n?`<p>${res.upd.length} technique${res.upd.length===1?"":"s"} changed · ${res.add.length} new · ${res.rm.length} removed. Check the list, then apply.</p>`:`<p>No changes to the technique wording were found.</p>`}
+ <div style="max-height:46vh;overflow:auto">
+ ${res.upd.length?`<h3>Changed</h3><ul class="small">${li(res.upd.map(u=>`<b>${esc(T[u.id].n)}</b> – ${u.diff.map(k=>FIELD_LABEL[k]).join(", ")}`))}</ul>`:""}
+ ${res.add.length?`<h3>New</h3><ul class="small">${li(res.add.map(a=>`<b>${esc(a.d.n)}</b> – ${esc(macroById(a.d.m).n)}`))}</ul>`:""}
+ ${res.rm.length?`<h3>Removed</h3><ul class="small">${li(res.rm.map(id=>esc(T[id].n)))}</ul>`:""}
+ ${res.notes.length?`<h3>Notes in the Changes column</h3><p class="small muted" style="margin:0">These aren’t applied automatically – open the technique and edit it.</p><ul class="small">${li(res.notes.map(([a,b])=>`<b>${esc(a)}</b>: ${esc(b)}`))}</ul>`:""}
+ ${res.skip.length?`<h3>Skipped</h3><ul class="small">${li(res.skip.map(esc))}</ul>`:""}</div>
+ <div class="row" style="margin-top:12px"><span class="spacer"></span><button class="btn ghost" data-mclose>${n?"Cancel":"Close"}</button>${n?`<button class="btn hi" id="xlApply">Apply ${n} change${n===1?"":"s"}</button>`:""}</div>`);
+ const b=$("#xlApply");if(b)b.onclick=()=>{
+  res.upd.forEach(({id,d})=>{if(T[id].own)custom[id]=Object.assign({},custom[id],d);else{const base=edits[id]||BASE_T[id];edits[id]=Object.assign({},base,d)}});
+  res.add.forEach(({d})=>{custom["own_"+(slug(d.n).slice(0,30)||"t")+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,4)]=d});
+  res.rm.forEach(id=>{delete custom[id];settings.playbook=(settings.playbook||[]).filter(x=>x!==id)});
+  persist("edits");persist("custom");persist("settings");rebuild();hideModal();render();toast(`${n} change${n===1?"":"s"} applied. Edited techniques show an “Edited” badge and can be reset to the original.`,6000);
+ };
+}
+function sheetSettingsHTML(){
+ return `<div class="card" style="margin-top:14px"><h2>Techniques spreadsheet</h2>
+ <p class="small muted" style="margin-top:0">Review or rewrite techniques in Excel. Download the spreadsheet, make changes, then load it back – Blueprint shows every change before it updates anything. Edits can be reset to the original on any technique page.</p>
+ <div class="row"><button class="btn alt" data-act="xlsxout">Download techniques spreadsheet</button><label class="btn alt" style="display:inline-block">Update from a spreadsheet…<input type="file" accept=".xlsx" id="xlsxIn" style="display:none"></label></div></div>`;
+}
+
+/* ---------- backup reminder ---------- */
+const BACKUP_DAYS=14;
+function backupDue(){
+ const hasData=saved.length||walks.length||Object.keys(custom).length||Object.keys(edits).length||Object.keys(videos).length||(settings.playbook||[]).length;
+ if(!hasData)return false;
+ let start=LS.get("cdp_dataSince",0);if(!start){start=Date.now();LS.set("cdp_dataSince",start)}
+ const lb=LS.get(KEYS.backup,0),lc=LS.get(KEYS.changed,0);
+ if(lb&&lc<=lb)return false;
+ if(Date.now()<LS.get("cdp_backupSnooze",0))return false;
+ return Date.now()-Math.max(lb,start)>=BACKUP_DAYS*864e5;
+}
+async function smartBackup(){
+ const name=`Blueprint backup ${today()}.json`;
+ try{if(fsSupported()&&await loadRoot()){const r=await writeTo(["Backups"],name,new Blob([JSON.stringify(backupData(),null,1)],{type:"application/json"}));LS.set(KEYS.backup,Date.now());render();toast(`Backup saved to ${esc(r.path.join(" › "))}.`,6000);return}}catch(e){console.warn(e)}
+ await doBackup();
+}
+
+/* ---------- events ---------- */
+function bindMore(all){
+ all("[data-wtap]",b=>{b.onclick=e=>{if(e.target.closest("[data-wuntap]"))return;walkTap(b.dataset.wtap,1)};b.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();walkTap(b.dataset.wtap,1)}}});
+ all("[data-wuntap]",b=>b.onclick=e=>{e.stopPropagation();walkTap(b.dataset.wuntap,-1)});
+ all("[data-wf]",el=>{const k=el.dataset.wf;const f=()=>{W[k]=el.value;saveW()};el.oninput=f;el.onchange=f});
+ all("[data-wlf]",b=>b.onclick=()=>{const l=(T[W.focus].look||[])[+b.dataset.wlf];if(l==null)return;W.lf[l]=!W.lf[l];if(!W.lf[l])delete W.lf[l];saveW();rerenderKeep()});
+ all("[data-rmwalk]",b=>b.onclick=()=>{const i=walks.findIndex(v=>v.id===b.dataset.rmwalk);if(i<0)return;const v=walks.splice(i,1)[0];persistWalks();rerenderKeep();
+  toast(`Visit deleted. <button class="btn sm undo" id="undoW">Undo</button>`,6000);const u=$("#undoW");if(u)u.onclick=()=>{walks.splice(i,0,v);persistWalks();$("#toast").style.display="none";rerenderKeep()}});
+ const st=$("#sfTech");if(st)st.onchange=()=>{setFocus(st.value);rebuild();rerenderKeep();toast(st.value?`${T[st.value].n} is now the school focus.`:"School focus cleared.")};
+ const sm=$("#sfTerm");if(sm)sm.oninput=()=>{if(settings.schoolFocus){settings.schoolFocus.term=sm.value;persist("settings")}};
+ const xi=$("#xlsxIn");if(xi)xi.onchange=()=>{if(xi.files[0])importTechSheet(xi.files[0]);xi.value=""};
+}
+function actMore(x){
+ if(x==="walkstart"){if(!W)W=blankVisit();if(!W.focus&&!visitHasData(W))W.focus=focusTech();saveW();setView("walk");return true}
+ if(x==="walkexit"){if(W&&!visitHasData(W)){W=null;LS.set("cdp_walkdraft",null)}teachTab="walks";setView("saved");return true}
+ if(x==="wtoggle"){const o=W.obs;if(o.startedAt){o.elapsed=obsElapsed(o);o.startedAt=null}else o.startedAt=Date.now();saveW();rerenderKeep();return true}
+ if(x==="wreset"){W.obs.elapsed=0;W.obs.startedAt=null;saveW();rerenderKeep();return true}
+ if(x==="wdiscard"){const keep=W;W=blankVisit(keep);W.year=keep.year;saveW();rerenderKeep();toast(`Visit cleared. <button class="btn sm undo" id="undoWd">Undo</button>`,6000);const u=$("#undoWd");if(u)u.onclick=()=>{W=keep;saveW();$("#toast").style.display="none";rerenderKeep()};return true}
+ if(x==="wnext"){if(!storeVisit()){toast("Tap what you see first – nothing’s recorded for this room yet.");return true}const room=W.room;W=blankVisit(W);saveW();setView("walk");toast(`${room?esc(room)+" saved":"Visit saved"}. On to the next room.`,3000);return true}
+ if(x==="wfinish"){const stored=storeVisit();const n=W?walks.filter(v=>v.walk===W.walk).length:0;W=null;LS.set("cdp_walkdraft",null);teachTab="walks";setView("saved");toast(n?`Learning walk saved – ${n} room${n===1?"":"s"}.`:(stored?"Visit saved.":"Nothing recorded, so nothing was saved."),4000);return true}
+ if(x==="togglefocus"){const on=isFocus(curTech);setFocus(on?"":curTech);rebuild();rerenderKeep();toast(on?"School focus cleared.":`${T[curTech].n} is now the school focus${focusTerm()?" for "+esc(focusTerm()):""}. Change it in Settings.`,5000);return true}
+ if(x==="termreport"){termReport();return true}
+ if(x==="termreportgo"){teachTab="patterns";setView("saved");toast("Set the dates for the term, then choose Download term report.",5000);return true}
+ if(x==="xlsxout"){downloadTechSheet();return true}
+ if(x==="spbackup"){smartBackup();return true}
+ if(x==="snoozebackup"){LS.set("cdp_backupSnooze",Date.now()+3*864e5);rerenderKeep();return true}
+ return false;
+}
 
 /* =====================================================================
    SHAREPOINT SAVING (synced folder via File System Access API + web link)
@@ -1739,7 +2108,7 @@ $("#modal").addEventListener("click",e=>{if(e.target.id==="modal")hideModal()});
 /* =====================================================================
    BACKUP / RESTORE
    ===================================================================== */
-function backupData(){return {app:"coaching-debrief-playbook",version:APP_VERSION,exported:new Date().toISOString(),custom,edits,videos,moments,saved,settings,nuances}}
+function backupData(){return {app:"coaching-debrief-playbook",version:APP_VERSION,exported:new Date().toISOString(),custom,edits,videos,moments,saved,settings,nuances,walks}}
 async function doBackup(){
  const name=`Blueprint backup ${new Date().toISOString().slice(0,10)}.json`;
  const ok=await download(name,JSON.stringify(backupData(),null,1),"application/json");
@@ -1751,15 +2120,16 @@ async function restore(file){
  if(!data||data.app!=="coaching-debrief-playbook"){toast("That file isn’t a Blueprint backup.");return}
  const c=k=>Object.keys(data[k]||{}).length;
  showModal(`<h2>Restore from backup</h2><p class="small muted">Backup from ${esc(new Date(data.exported).toLocaleString())}</p>
- <p>It contains <b>${(data.saved||[]).length}</b> conversations, <b>${c("custom")}</b> of your techniques, <b>${c("edits")}</b> edited techniques and <b>${c("videos")}</b> video links${(data.settings&&data.settings.playbook||[]).length?` and a school playbook of <b>${data.settings.playbook.length}</b> techniques`:""}.</p>
+ <p>It contains <b>${(data.saved||[]).length}</b> conversations, <b>${c("custom")}</b> of your techniques, <b>${c("edits")}</b> edited techniques and <b>${c("videos")}</b> video links${(data.walks||[]).length?`, <b>${data.walks.length}</b> learning walk visits`:""}${(data.settings&&data.settings.playbook||[]).length?` and a school playbook of <b>${data.settings.playbook.length}</b> techniques`:""}.</p>
  <p class="small"><b>Merge</b> adds what’s in the file and keeps what’s here (the file wins where the same item exists). <b>Replace</b> makes this browser match the file exactly.</p>
  <div class="row"><button class="btn hi" data-m="merge">Merge</button><button class="btn alt" data-m="replace">Replace everything</button><button class="btn ghost" data-mclose>Cancel</button></div>`);
  const apply=mode=>{
-  if(mode==="replace"){custom=data.custom||{};edits=data.edits||{};videos=data.videos||{};moments=data.moments||{};nuances=data.nuances||{};saved=data.saved||[];settings=Object.assign({spUrl:"",school:"",playbook:[],timerMins:20},data.settings||{})}
+  if(mode==="replace"){custom=data.custom||{};edits=data.edits||{};videos=data.videos||{};moments=data.moments||{};nuances=data.nuances||{};saved=data.saved||[];walks=data.walks||[];settings=Object.assign({spUrl:"",school:"",playbook:[],timerMins:20},data.settings||{})}
   else{custom=Object.assign({},custom,data.custom||{});edits=Object.assign({},edits,data.edits||{});videos=Object.assign({},videos,data.videos||{});moments=Object.assign({},moments,data.moments||{});nuances=Object.assign({},nuances,data.nuances||{});
    const ids=new Map(saved.map((s,i)=>[s.id,i]));(data.saved||[]).forEach(s=>{if(ids.has(s.id))saved[ids.get(s.id)]=s;else saved.push(s)});
+   const wids=new Map(walks.map((v,i)=>[v.id,i]));(data.walks||[]).forEach(v=>{if(wids.has(v.id))walks[wids.get(v.id)]=v;else walks.push(v)});
    const ds=data.settings||{};if(ds.spUrl&&!settings.spUrl)settings.spUrl=ds.spUrl;if(ds.school&&!settings.school)settings.school=ds.school;if(ds.schoolLogo&&!settings.schoolLogo)settings.schoolLogo=ds.schoolLogo;if(ds.theme&&!settings.theme)settings.theme=ds.theme;settings.playbook=[...new Set((settings.playbook||[]).concat(ds.playbook||[]))]}
-  ["custom","edits","videos","moments","saved","settings","nuance"].forEach(persist);LS.set(KEYS.backup,Date.now());rebuild();applyBranding();hideModal();render();toast("Backup restored.");
+  ["custom","edits","videos","moments","saved","settings","nuance"].forEach(persist);LS.set("cdp_walks",walks);LS.set(KEYS.backup,Date.now());rebuild();applyBranding();hideModal();render();toast("Backup restored.");
  };
  $("#modal [data-m=merge]").onclick=()=>apply("merge");$("#modal [data-m=replace]").onclick=()=>apply("replace");
 }
@@ -1915,14 +2285,14 @@ const DOCX=(()=>{
  // ---------- zip (store) ----------
  const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
  const crc32=b=>{let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRC[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0};
- function zip(files){const parts=[],cen=[];let off=0;
+ function zip(files,type){const parts=[],cen=[];let off=0;
   for(const [name,data] of files){const nb=enc.encode(name),crc=crc32(data),h=new DataView(new ArrayBuffer(30));
    h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(8,0,true);h.setUint32(14,crc,true);h.setUint32(18,data.length,true);h.setUint32(22,data.length,true);h.setUint16(26,nb.length,true);
    parts.push(new Uint8Array(h.buffer),nb,data);
    const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint32(16,crc,true);c.setUint32(20,data.length,true);c.setUint32(24,data.length,true);c.setUint16(28,nb.length,true);c.setUint32(42,off,true);
    cen.push(new Uint8Array(c.buffer),nb);off+=30+nb.length+data.length}
   const cs=cen.reduce((a,b)=>a+b.length,0),e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cs,true);e.setUint32(16,off,true);
-  return new Blob([...parts,...cen,new Uint8Array(e.buffer)],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"})}
+  return new Blob([...parts,...cen,new Uint8Array(e.buffer)],{type:type||"application/vnd.openxmlformats-officedocument.wordprocessingml.document"})}
  // ---------- builder ----------
  function build(html,title,data){
   const doc=new DOMParser().parseFromString(`<div id="root">${html}</div>`,"text/html").getElementById("root");
@@ -2013,21 +2383,21 @@ const DOCX=(()=>{
    if(!txt.includes("urn:blueprint-coaching:conversation"))continue;const m=txt.match(/<!\[CDATA\[([\s\S]*)\]\]>/);if(!m)continue;
    try{return JSON.parse(m[1].replace(/\]\]\]\]><!\[CDATA\[>/g,"]]>"))}catch(err){return null}}
   return null}
- return {build,readData};
+ return {build,readData,zip};
 })();
 async function downloadDocx(filename,html,title,data){try{const blob=DOCX.build(html,title,data);return await download(filename,blob,"application/vnd.openxmlformats-officedocument.wordprocessingml.document")}catch(e){console.error(e);toast("Couldn’t make the Word file – "+(e.message||e));return false}}
 
 /* =====================================================================
    ROUTING + EVENTS
    ===================================================================== */
-const NAVOF={progress:"saved",home:"home",debrief:"debrief",library:"library",tech:"library",edit:"library",saved:"saved",more:"more",settings:"more",resources:"more"};
+const NAVOF={progress:"saved",home:"home",debrief:"debrief",library:"library",tech:"library",edit:"library",saved:"saved",more:"more",settings:"more",resources:"more",walk:"saved"};
 function setView(v){if(v==="observe"){step=0;v="debrief"}if(v==="patterns"){teachTab="patterns";v="saved"}view=v;const nv=NAVOF[v]||"home";document.querySelectorAll("header nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===nv));render();window.scrollTo(0,0)}
 document.querySelectorAll("header nav button").forEach(b=>b.onclick=()=>{if(b.dataset.v==="saved")teachTab="teachers";setView(b.dataset.v)});
 document.querySelector("header .brand").onclick=()=>setView("home");
 if(!settings.helpSeen)setTimeout(showHelp,300);
 function render(){
  const a=$("#app"), y=window.scrollY;
- const V={home:homeHTML,debrief:debriefHTML,library:libraryHTML,tech:()=>T[curTech]?techHTML(curTech):libraryHTML(),edit:editHTML,saved:savedHTML,progress:progressHTML,settings:settingsHTML,more:moreHTML,resources:resourcesPage};
+ const V={home:homeHTML,debrief:debriefHTML,library:libraryHTML,tech:()=>T[curTech]?techHTML(curTech):libraryHTML(),edit:editHTML,saved:savedHTML,progress:progressHTML,settings:settingsHTML,more:moreHTML,resources:resourcesPage,walk:walkHTML};
  a.innerHTML=(V[view]||homeHTML)();
  bind();
  if(view==="debrief"&&step===0)window.scrollTo(0,y);
@@ -2129,9 +2499,11 @@ function bind(){
  // patterns
  const pf=$("#pFrom"),pt=$("#pTo"),pn=$("#pNames");
  if(pf)pf.onchange=()=>{patFilter.from=pf.value;render()}; if(pt)pt.onchange=()=>{patFilter.to=pt.value;render()}; if(pn)pn.onchange=()=>{patFilter.names=pn.checked};
+ bindMore(all);
  all("[data-act]",b=>b.onclick=()=>act(b.dataset.act));
 }
 async function act(x){
+ if(actMore(x))return;
  if(x==="new"){act("newcycle");return}
  if(x==="resume"){setView("debrief")}
  if(x==="newcycle"||x==="newobs"){focusQ="";D=norm(blank());D.obs=blankObs();step=0;ctxOpen=true;noteDraft={text:"",type:"noticing",macro:""};obsUI={note:false,roster:false};goalQ="";goalArea="";showAllBets=false;DT={start:null,elapsed:0};LS.set(KEYS.draft,D);setView("debrief")}
