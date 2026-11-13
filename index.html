@@ -1844,16 +1844,16 @@ async function termReport(){
 /* ---------- techniques spreadsheet (download + import) ---------- */
 const XL_COLS=(()=>{const c=[["ID (don't change)",16],["Technique name",28],["VTLM 2.0 element",18],["Focus area",26],["Also supports",24],["Purpose",44],["Why it works",44]];
  for(let i=1;i<=5;i++)c.push([`Step ${i} – title`,20],[`Step ${i} – what the teacher does`,40]);
- return c.concat([["Look-fors (one per line)",36],["Common pitfalls (one per line)",36],["Rehearse it in the debrief",40],["Related reading / source",34],["Best bet for (common problems – from the focus areas)",40],["Changes – describe or make your edits",44]])})();
+ return c.concat([["Look-fors (one per line)",36],["Common pitfalls (one per line)",36],["Rehearse it in the debrief",40],["Related reading / source",34],["Best bet for – problems this technique is suggested for (one per line)",44]])})();
 function xlsxBlob(rows,guide){
  const xe=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"");
  const col=i=>{let s="";i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
  const cell=(v,r,c,st)=>`<c r="${col(c)}${r}" t="inlineStr" s="${st}"><is><t xml:space="preserve">${xe(v)}</t></is></c>`;
  const last=XL_COLS.length-1;
- const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane xSplit="2" ySplit="1" topLeftCell="C2" activePane="bottomRight" state="frozen"/></sheetView></sheetViews><cols>${XL_COLS.map((c,i)=>`<col min="${i+1}" max="${i+1}" width="${c[1]}" customWidth="1"/>`).join("")}</cols><sheetData><row r="1" ht="42" customHeight="1">${XL_COLS.map((c,i)=>cell(c[0],1,i,i===last?5:1)).join("")}</row>${rows.map((row,ri)=>`<row r="${ri+2}">${row.map((v,i)=>cell(v,ri+2,i,i===0||i===last-1?3:i===last?4:i===1?6:2)).join("")}</row>`).join("")}</sheetData><autoFilter ref="A1:${col(last)}${rows.length+1}"/></worksheet>`;
+ const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane xSplit="2" ySplit="1" topLeftCell="C2" activePane="bottomRight" state="frozen"/></sheetView></sheetViews><cols>${XL_COLS.map((c,i)=>`<col min="${i+1}" max="${i+1}" width="${c[1]}" customWidth="1"/>`).join("")}</cols><sheetData><row r="1" ht="42" customHeight="1">${XL_COLS.map((c,i)=>cell(c[0],1,i,i===0||i===2?5:1)).join("")}</row>${rows.map((row,ri)=>`<row r="${ri+2}">${row.map((v,i)=>cell(v,ri+2,i,i===0||i===2?3:i===1?6:2)).join("")}</row>`).join("")}</sheetData><autoFilter ref="A1:${col(last)}${rows.length+1}"/></worksheet>`;
  const gsheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="110" customWidth="1"/></cols><sheetData>${guide.map((g,i)=>`<row r="${i+1}">${cell(g[0],i+1,0,g[1]?7:8)}</row>`).join("")}</sheetData></worksheet>`;
  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="5"><font><sz val="9"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font><font><sz val="9"/><color rgb="FF5A6878"/><name val="Arial"/></font><font><b/><sz val="9"/><name val="Arial"/></font><font><b/><sz val="11"/><color rgb="FF012C5F"/><name val="Arial"/></font></fonts>
-<fills count="6"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF012C5F"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE7EDF4"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF2CC"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFB7791F"/></patternFill></fill></fills>
+<fills count="6"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF012C5F"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE7EDF4"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF2CC"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF5A6878"/></patternFill></fill></fills>
 <borders count="2"><border/><border><left style="thin"><color rgb="FFB5D3F1"/></left><right style="thin"><color rgb="FFB5D3F1"/></right><top style="thin"><color rgb="FFB5D3F1"/></top><bottom style="thin"><color rgb="FFB5D3F1"/></bottom></border></borders>
 <cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="9"><xf/>
 <xf fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="center"/></xf>
@@ -1879,19 +1879,18 @@ function techRows(){
   const t=T[id],m=macroById(t.m)||{n:"",el:""},el=elById(m.el)||{n:""},st=t.steps||[];
   const r=[id,t.n,el.n,m.n,(t.also||[]).map(a=>macroById(a)&&macroById(a).n).filter(Boolean).join(", "),t.p||"",t.w||""];
   for(let i=0;i<5;i++)r.push(st[i]?st[i][0]:"",st[i]?st[i][1]:"");
-  return r.concat([(t.look||[]).join("\n"),(t.pit||[]).join("\n"),t.say||"",t.src||"",probsOfTech(id).map(p=>probById(p)?probById(p).t:"").filter(Boolean).join("\n"),""])});
+  return r.concat([(t.look||[]).join("\n"),(t.pit||[]).join("\n"),t.say||"",t.src||"",probsOfTech(id).map(p=>probById(p)?probById(p).t:"").filter(Boolean).join("\n")])});
 }
 async function downloadTechSheet(){
  const rows=techRows();
  const guide=[["Blueprint – technique content",1],[`${rows.length} techniques from ${settings.school||"this copy of Blueprint"}, downloaded ${today()}. It includes your school’s edits and added techniques.`,0],["",0],["How to make changes",1],
-  ["1. Edit any white cell. The new wording replaces the old when you load the file back into Blueprint (Settings → Techniques spreadsheet → Update from a spreadsheet).",0],
-  ["2. Look-fors and pitfalls: one per line inside the cell (Alt+Enter on Windows, Option+Enter on Mac).",0],
-  ["3. Focus area and Also supports must use the focus area names exactly as they appear.",0],
-  ["4. Leave the grey columns alone: the ID is how Blueprint matches your row. ‘Best bet for’ is for reference only.",0],
-  ["5. To add a technique, add a row at the bottom with the ID blank. It needs a name, focus area, purpose and at least one step.",0],
-  ["6. To remove a technique your school added, write “Remove” in the Changes column. Built-in techniques can’t be removed.",0],
-  ["7. Notes in the Changes column are shown when you load the file, so you can make those edits in Blueprint.",0],["",0],
-  ["Blueprint shows every change and asks you to confirm before anything is updated.",1]];
+  ["Just edit the cells on the Techniques tab. When the file is loaded back into Blueprint (Settings → Techniques spreadsheet → Update from a spreadsheet), every changed cell updates that technique.",0],
+  ["• Look-fors, pitfalls and Best bet for: one item per line inside the cell (Alt+Enter on Windows, Option+Enter on Mac).",0],
+  ["• Focus area, Also supports and Best bet for must use the names exactly as they appear elsewhere in the sheet.",0],
+  ["• Leave the two grey columns alone: the ID is how Blueprint matches each row, and the VTLM 2.0 element follows from the focus area.",0],
+  ["• To add a technique, fill in a new row at the bottom and leave the ID blank. It needs a name, focus area, purpose and at least one step.",0],
+  ["• To remove a step, clear both of its cells.",0],["",0],
+  ["Blueprint lists every change and asks you to confirm before anything is updated. Any edited technique can be reset to the original on its page.",1]];
  const ok=await download(`Blueprint techniques ${today()}.xlsx`,xlsxBlob(rows,guide),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
  if(ok!==false)toast("Techniques spreadsheet downloaded.",4000);
 }
@@ -1925,17 +1924,18 @@ async function readSheetRows(buf){
  throw new Error("no technique sheet");
 }
 const TFIELDS=["n","m","also","src","p","w","steps","look","pit","say"];
-const FIELD_LABEL={n:"name",m:"focus area",also:"also supports",src:"source",p:"purpose",w:"why it works",steps:"steps",look:"look-fors",pit:"pitfalls",say:"rehearsal"};
+const FIELD_LABEL={n:"name",m:"focus area",also:"also supports",src:"source",p:"purpose",w:"why it works",steps:"steps",look:"look-fors",pit:"pitfalls",say:"rehearsal",probs:"best bet for"};
 const pickT=t=>{const o={};TFIELDS.forEach(k=>{o[k]=t[k]==null?(["also","steps","look","pit"].includes(k)?[]:""):t[k]});return o};
 function parseTechRows(rows){
  const H=(rows[0]||[]).map(h=>String(h||"").toLowerCase().replace(/[–—]/g,"-").replace(/\s+/g," ").trim());
  const ix=re=>H.findIndex(h=>re.test(h));
- const C={id:ix(/^id\b/),n:ix(/^technique name/),m:ix(/^focus area/),also:ix(/^also/),p:ix(/^purpose/),w:ix(/^why/),look:ix(/^look.?for/),pit:ix(/pitfall/),say:ix(/^rehearse/),src:ix(/^related|^source/),chg:ix(/^changes/)};
+ const C={id:ix(/^id\b/),n:ix(/^technique name/),m:ix(/^focus area/),also:ix(/^also/),p:ix(/^purpose/),w:ix(/^why/),look:ix(/^look.?for/),pit:ix(/pitfall/),say:ix(/^rehearse/),src:ix(/^related|^source/),bb:ix(/^best bet/),chg:ix(/^changes/)};
  const S=[1,2,3,4,5].map(i=>[ix(new RegExp(`^step ${i} - title`)),ix(new RegExp(`^step ${i} - what`))]);
  const macroByName=s=>{const q=String(s||"").trim().toLowerCase();const m=MACROS.find(x=>x.n.toLowerCase()===q);return m?m.id:""};
  const parseAlso=v=>{const q=v.toLowerCase(),hits=[];MACROS.forEach(m=>{const i=q.indexOf(m.n.toLowerCase());if(i>=0)hits.push([i,i+m.n.length,m.id])});hits.sort((a,b)=>a[0]-b[0]||b[1]-a[1]);let end=-1;return hits.filter(h=>{if(h[0]<end)return false;end=h[1];return true}).map(h=>h[2])};
  const g=(r,i)=>i<0?"":String(r[i]==null?"":r[i]).replace(/\r\n/g,"\n").trim();
  const lines=v=>v.split("\n").map(s=>s.replace(/^[•\-–*]\s*/,"").trim()).filter(Boolean);
+ const probByTitle={};MACROS.forEach(m=>m.probs.forEach(p=>probByTitle[p.t.trim().toLowerCase()]=p.id));
  const res={upd:[],add:[],rm:[],notes:[],skip:[]};
  rows.slice(1).forEach((r,ri)=>{
   const id=g(r,C.id),name=g(r,C.n),chg=g(r,C.chg);if(!id&&!name)return;
@@ -1947,10 +1947,11 @@ function parseTechRows(rows){
   const d={n:name||(cur?cur.n:""),m:m||(cur?cur.m:""),also:C.also<0?(cur?cur.also:[]):parseAlso(g(r,C.also)),
    p:g(r,C.p)||(cur?cur.p:""),w:C.w<0?(cur?cur.w:""):g(r,C.w),steps:S.map(([a,b])=>[g(r,a),g(r,b)]).filter(s=>s[0]||s[1]),
    look:C.look<0?(cur?cur.look:[]):lines(g(r,C.look)),pit:C.pit<0?(cur?cur.pit:[]):lines(g(r,C.pit)),say:C.say<0?(cur?cur.say:""):g(r,C.say),src:C.src<0?(cur?cur.src:""):g(r,C.src)};
+  if(C.bb>=0){const want=lines(g(r,C.bb)),ids=[];want.forEach(t=>{const pid=probByTitle[t.toLowerCase()];if(pid)ids.push(pid);else res.skip.push(`${d.n}: best-bet problem “${t}” not recognised`)});d.probs=ids}
   if(mName&&!m)res.skip.push(`${d.n}: focus area “${mName}” not recognised – kept the current one`);
   d.also=d.also.filter(a=>a!==d.m);
   if(cur){if(!d.steps.length)d.steps=cur.steps;
-   const same=(k,a,b)=>k==="also"?JSON.stringify([...a].sort())===JSON.stringify([...b].sort()):JSON.stringify(a)===JSON.stringify(b);const diff=TFIELDS.filter(k=>!same(k,d[k],cur[k]));if(diff.length)res.upd.push({id,d,diff});}
+   const same=(k,a,b)=>k==="also"?JSON.stringify([...a].sort())===JSON.stringify([...b].sort()):JSON.stringify(a)===JSON.stringify(b);const diff=TFIELDS.filter(k=>!same(k,d[k],cur[k]));if(d.probs){const now=probsOfTech(id);if(JSON.stringify([...d.probs].sort())!==JSON.stringify([...now].sort()))diff.push("probs");else delete d.probs}if(diff.length)res.upd.push({id,d,diff});}
   else{if(!d.m||!d.p||!d.steps.length){res.skip.push(`${d.n}: a new technique needs a focus area, purpose and at least one step`);return}res.add.push({d})}
  });
  return res;
@@ -1960,7 +1961,7 @@ async function importTechSheet(file){
  const n=res.upd.length+res.add.length+res.rm.length;
  const li=a=>a.map(x=>`<li>${x}</li>`).join("");
  showModal(`<h2>Update techniques from the spreadsheet</h2>
- ${n?`<p>${res.upd.length} technique${res.upd.length===1?"":"s"} changed · ${res.add.length} new · ${res.rm.length} removed. Check the list, then apply.</p>`:`<p>No changes to the technique wording were found.</p>`}
+ ${n?`<p>${res.upd.length} technique${res.upd.length===1?"":"s"} changed · ${res.add.length} new · ${res.rm.length} removed. Check the list, then apply.</p>`:`<p>No changes were found – the spreadsheet matches Blueprint.</p>`}
  <div style="max-height:46vh;overflow:auto">
  ${res.upd.length?`<h3>Changed</h3><ul class="small">${li(res.upd.map(u=>`<b>${esc(T[u.id].n)}</b> – ${u.diff.map(k=>FIELD_LABEL[k]).join(", ")}`))}</ul>`:""}
  ${res.add.length?`<h3>New</h3><ul class="small">${li(res.add.map(a=>`<b>${esc(a.d.n)}</b> – ${esc(macroById(a.d.m).n)}`))}</ul>`:""}
