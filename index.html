@@ -188,7 +188,7 @@ ul.cross li::before{content:"!";color:var(--navy)}
 .lv.notyet{background:#fff;color:var(--navy)}.lv.partly{background:var(--b100);color:var(--navy)}.lv.secure{background:var(--blue);color:#fff;border-color:var(--blue)}
 .timeline{border-left:3px solid var(--b200);margin:8px 0 0 6px;padding-left:14px}
 .tl{position:relative;padding:6px 0 10px}.tl::before{content:"";position:absolute;left:-21px;top:10px;width:11px;height:11px;border-radius:50%;background:var(--blue);border:2px solid #fff}
-.bars .bar{display:grid;grid-template-columns:minmax(140px,280px) 1fr 40px;gap:8px;align-items:center;font-size:13.5px;margin-bottom:5px}
+.bars .bar{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(60px,1fr) 30px;gap:8px;align-items:center;font-size:13.5px;margin-bottom:5px}
 .bars .track{display:block;background:var(--b50);border-radius:4px;height:14px;overflow:hidden}.bars .fill{background:var(--blue);height:100%}
 .links a{display:block;padding:3px 0}
 .guide-links{font-size:12.5px;margin-top:6px}
@@ -378,6 +378,10 @@ header.top .brand .bsep{width:1px;height:28px;background:rgba(255,255,255,.35)}
 @media(max-width:700px){.kpis{grid-template-columns:1fr 1fr}}
 
 .cfutag{display:block;margin-top:3px;font-size:11px;font-weight:700;color:var(--blue)}
+
+.samplebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff7e0;border-color:#f1d9a0;margin-bottom:12px}
+.schoolbar{margin-bottom:12px}.schoolbar .tchip .btn.ghost{min-height:24px;padding:0 4px;text-decoration:none}
+.fbtn[disabled]{opacity:.55;cursor:not-allowed}
 
 </style>
 <link rel="manifest" href="manifest.webmanifest">
@@ -689,7 +693,8 @@ function obsSuggest(o){
  return {probs,macros,why};
 }
 function obsTap(k,delta){
- const o=D.obs;o.counts[k]=Math.max(0,(o.counts[k]||0)+delta);
+ const o=D.obs;
+ if(delta>0&&!o.startedAt){o.startedAt=Date.now();toast(o.elapsed?"Timer resumed – tallies are time-stamped.":"Timer started – tallies are time-stamped from now.",3000)}o.counts[k]=Math.max(0,(o.counts[k]||0)+delta);
  if(delta>0)o.events.push({k,t:Math.round(obsElapsed())});
  else{for(let i=o.events.length-1;i>=0;i--)if(o.events[i].k===k){o.events.splice(i,1);break}}
  saveDraft();render();
@@ -918,6 +923,7 @@ function moreHTML(){
   <button class="tile" data-go="settings"><b>Settings</b><span>School playbook, SharePoint, backup, timer</span></button>
   <button class="tile" data-go="resources"><b>VTLM 2.0 &amp; PCMS resources</b><span>Official guides and placemats</span></button>
   <button class="tile" data-act="backup"><b>Download backup file</b><span>Keep a copy of everything in SharePoint or OneDrive</span></button>
+  ${saved.some(s=>s.sample)?`<button class="tile" data-act="rmsample"><b>Remove sample data</b><span>Delete the made-up practice teachers</span></button>`:`<button class="tile" data-act="sample"><b>Practice with sample teachers</b><span>Load three made-up teachers to explore progress and patterns – great for PL</span></button>`}
  </div>`;
 }
 function resourcesPage(){return `<div class="row"><button class="btn alt sm" data-go="more">← More</button></div><h1 style="margin-top:10px">VTLM 2.0 and PCMS resources</h1>${resourcesHTML()}
@@ -1139,10 +1145,12 @@ function finishModal(){
  showModal(`<h2>All saved ✓</h2><p class="small muted">This coaching conversation with <b>${esc(D.teacher)}</b> is saved in this browser and listed under Teachers.</p>
  <div class="finrow"><button class="fbtn" data-m="sp"><b>Save all to SharePoint</b><span>The full conversation and the action card, in ${esc(D.teacher)}’s folder</span></button>
  <button class="fbtn" data-m="card"><b>Download the teacher’s action card</b><span>Word document – goal, technique, steps, look-for, follow-up</span></button>
+ <button class="fbtn" data-m="ics" ${followupDate(D)?"":"disabled"}><b>Add follow-up to calendar</b><span>${followupDate(D)?`An Outlook invite for ${esc(followupDate(D))}`:"Add a follow-up date in step 5 first"}</span></button>
  <button class="fbtn" data-m="plan"><b>Download the full plan</b><span>Word document – the coach’s record with technique sheets</span></button></div>
  <div class="row" style="margin-top:12px"><span class="spacer"></span><button class="btn hi" data-m="done">Done</button></div>`);
  const mb=$("#modal");
  mb.querySelector("[data-m=sp]").onclick=()=>{hideModal();saveToSharePoint(D)};
+ mb.querySelector("[data-m=ics]").onclick=()=>addToCalendar(D);
  mb.querySelector("[data-m=card]").onclick=async()=>{if(await downloadDocx(cardFilename(D).replace(/\.html$/,".docx"),actionCardSheet(D),`${D.teacher} – action card`))toast("Action card downloaded as a Word document.",4000)};
  mb.querySelector("[data-m=plan]").onclick=async()=>{if(await downloadDocx(convFilename(D).replace(/\.html$/,".docx"),planSheet(D),`${D.teacher} – coaching conversation`,norm(JSON.parse(JSON.stringify(D)))))toast("Full plan downloaded as a Word document.",4000)};
  mb.querySelector("[data-m=done]").onclick=()=>{hideModal();setView("home")};
@@ -1382,7 +1390,7 @@ function savedHTML(){
  const names=Object.keys(byT).sort();
  return `${backupNag()}${tabsHTML()}<div class="row"><h1>Teachers &amp; follow-ups</h1><span class="spacer"></span><label class="btn alt sm" style="display:inline-block">Open a saved conversation file<input type="file" accept=".docx,.html,.htm,.json" id="impConv" style="display:none"></label></div>
  <p class="lead">Each teacher at a glance. Open <b>View progress</b> to see their growth across cycles, record follow-ups and start the next cycle.</p>
- ${teacherCardsHTML()}`}
+ ${sampleBanner()}${teacherCardsHTML()}`}
 
 /* =====================================================================
    SETTINGS: playbook, SharePoint, backup, timer
@@ -1423,7 +1431,7 @@ function settingsHTML(){
    WHOLE-SCHOOL PATTERNS
    ===================================================================== */
 function patternData(){
- return saved.filter(s=>(!patFilter.from||s.date>=patFilter.from)&&(!patFilter.to||s.date<=patFilter.to));
+ return saved.concat(schoolRecords()).filter(s=>(!patFilter.from||s.date>=patFilter.from)&&(!patFilter.to||s.date<=patFilter.to));
 }
 function countBy(list,fn){const c={};list.forEach(x=>fn(x).forEach(k=>{c[k]=(c[k]||0)+1}));return Object.entries(c).sort((a,b)=>b[1]-a[1])}
 function barsHTML(rows,label,max){if(!rows.length)return `<p class="small muted">Nothing yet.</p>`;const m=max||rows[0][1];
@@ -1437,7 +1445,7 @@ function patternsHTML(){
  const volL=obsL.filter(s=>s.volPct!==null);
  const elRows=countBy(L,s=>[...new Set(s.macros.map(m=>macroById(m)&&macroById(m).el).filter(Boolean))]);
  return `<div class="row"><h1>Whole-school patterns</h1><span class="spacer"></span><button class="btn alt" data-act="csv">Export CSV</button></div>
- <p class="lead">What comes up across saved conversations in this browser. Use it with leaders to choose the next practice to codify and to plan professional learning. Exports are anonymised unless you choose otherwise.</p>
+ ${schoolBarHTML()}<p class="lead">What comes up across saved conversations${schoolOn&&schoolView.length?` – yours plus ${schoolView.length} colleague backup${schoolView.length>1?"s":""}`:" in this browser"}. Use it with leaders to choose the next practice to codify and to plan professional learning. Exports are anonymised unless you choose otherwise.</p>
  <div class="row" style="margin-bottom:14px"><label class="f" style="margin:0">From</label><input class="t" type="date" id="pFrom" value="${esc(patFilter.from)}" style="width:auto"><label class="f" style="margin:0">To</label><input class="t" type="date" id="pTo" value="${esc(patFilter.to)}" style="width:auto"><label class="chk"><input type="checkbox" id="pNames" ${patFilter.names?"checked":""}> Include teacher names in the export</label></div>
  <div class="kgrid" style="margin-bottom:14px">
   <div class="kbox"><div class="kpi">${L.length}</div><div class="small muted">conversations</div></div>
@@ -1547,7 +1555,7 @@ function teacherCardsHTML(){
  const cycles=saved.length,due=all.filter(x=>["late","soon"].includes(dueInfo(x.pd.list).cls)).length,lv=all.flatMap(x=>x.pd.levels),sec=lv.filter(l=>l==="secure").length;
  return `<div class="kpis"><div class="kpi"><b>${names.length}</b><span>teachers coached</span></div><div class="kpi"><b>${cycles}</b><span>coaching cycles</span></div><div class="kpi ${due?"warn":""}"><b>${due}</b><span>follow-ups due this week</span></div><div class="kpi"><b>${lv.length?Math.round(sec/lv.length*100)+"%":"–"}</b><span>action steps rated Secure</span></div></div>
  <div class="tcards">${all.map(({n,pd})=>{const last=pd.list[pd.list.length-1],g=(last.goals||[]).find(x=>x.id===last.goal),di=dueInfo(pd.list),s0=pd.series.find(x=>x.m.k==="otr"),ch=s0?changeOf(s0.pts,s0.m):null;
-  const ini=n.replace(/\(.*\)/,"").trim().split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?";
+  const ini=n.replace(/\(.*\)/,"").replace(/^Sample\s*–\s*/,"").replace(/^(Ms|Mr|Mrs|Miss|Dr)\.?\s+/,"").trim().split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?";
   return `<div class="tcard"><div class="row" style="align-items:center;gap:10px"><span class="avatar">${esc(ini)}</span><div style="flex:1;min-width:0"><h3 style="margin:0">${esc(n)}</h3><div class="small muted">${pd.list.length} cycle${pd.list.length>1?"s":""} · last ${esc(last.date||"")}</div></div></div>
    ${g?`<div class="small tgoal">Goal: <b>${esc(g.text)}</b></div>`:""}
    <div class="small">${last.chosen.filter(id=>T[id]).map(id=>{const l=latestLevel(last,id);return `<span class="tchip">${esc(T[id].n)}${l?` <i style="background:${LV_COL[l]}" title="${levelName(l)}"></i>`:""}</span>`}).join("")}</div>
@@ -1568,7 +1576,7 @@ function progressHTML(){
  <h2>Action steps and follow-up</h2>
  <div class="steps-tl">${pd.cyc.map(c=>`<div class="stl"><div class="stl-h"><b>${esc(c.label)}</b> <span class="muted small">${esc(c.date)}</span></div>${c.goal?`<div class="small">Goal: <b>${esc(c.goal)}</b></div>`:""}
   ${c.steps.map(x=>`<div class="stl-s"><span class="lvdot" style="background:${LV_COL[x.level]||"#CBD5E1"}"></span><div><b>${esc(x.name)}</b> ${x.level?`<span class="lv ${x.level}">${levelName(x.level)}</span>`:`<span class="small muted">not rated yet</span>`}${x.look?`<div class="small muted">Look-for: ${esc(x.look)}${x.seenNext!=null?` · seen ${x.seenNext}× at the next visit`:""}</div>`:""}</div></div>`).join("")}
-  <div class="row" style="gap:6px;margin-top:6px"><button class="btn sm alt" data-followup="${c.s.id}">Record follow-up</button><button class="btn sm alt" data-open="${c.s.id}">Open</button><button class="btn sm alt" data-spsaved="${c.s.id}">Save to SharePoint</button><button class="btn ghost sm" data-del="${c.s.id}">Delete</button></div></div>`).join("")}</div>
+  <div class="row" style="gap:6px;margin-top:6px"><button class="btn sm alt" data-followup="${c.s.id}">Record follow-up</button>${followupDate(c.s)?`<button class="btn sm alt" data-ics="${c.s.id}">Add follow-up to calendar</button>`:""}<button class="btn sm alt" data-open="${c.s.id}">Open</button><button class="btn sm alt" data-spsaved="${c.s.id}">Save to SharePoint</button><button class="btn ghost sm" data-del="${c.s.id}">Delete</button></div></div>`).join("")}</div>
  <div class="row" style="margin-top:12px"><span class="spacer"></span><button class="btn hi" data-nextcycle="${pd.list[pd.list.length-1].id}">Start next cycle with ${esc(curTeacher)}</button></div>`}
 /* ---------- Word / print version with chart images ---------- */
 function svgToPng(svg,w,h){return new Promise(res=>{try{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");c.width=w*2;c.height=h*2;const x=c.getContext("2d");x.scale(2,2);x.drawImage(img,0,0,w,h);res(c.toDataURL("image/png"))};img.onerror=()=>res("");img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg)}catch(e){res("")}})}
@@ -1582,6 +1590,68 @@ async function progressSheet(name){
  <h2>Action steps and follow-up</h2><table><tr><th style="width:15%">Cycle</th><th style="width:30%">Goal</th><th style="width:25%">Technique</th><th style="width:14%">Look-for seen next visit</th><th style="width:16%">Follow-up rating</th></tr>
  ${pd.cyc.flatMap(c=>c.steps.length?c.steps.map((x,j)=>`<tr><td>${j?"":esc(c.label)+"<br>"+esc(c.date)}</td><td>${j?"":esc(c.goal)}</td><td><b>${esc(x.name)}</b></td><td class="num">${x.seenNext==null?"–":x.seenNext+"×"}</td><td>${esc(levelName(x.level))||"–"}</td></tr>`):[`<tr><td>${esc(c.label)}<br>${esc(c.date)}</td><td>${esc(c.goal)}</td><td>–</td><td>–</td><td>–</td></tr>`]).join("")}</table>
  <h2>Reflection on progress</h2><div class="lines">${"<div class='l'></div>".repeat(5)}</div></div>`}
+
+/* =====================================================================
+   EXTRAS – calendar invites, sample data, whole-school view
+   ===================================================================== */
+/* ---------- 1. Add follow-up to calendar (.ics) ---------- */
+function followupDate(d){return (d.chosen||[]).map(c=>((d.plans||{})[c]||{}).follow).filter(Boolean).sort()[0]||""}
+function icsFor(d){
+ const fd=followupDate(d);if(!fd)return null;
+ const ymd=fd.replace(/-/g,""),next=new Date(fd+"T00:00:00Z");next.setUTCDate(next.getUTCDate()+1);const ymd2=next.toISOString().slice(0,10).replace(/-/g,"");
+ const g=(d.goals||[]).find(x=>x.id===d.goal);
+ const lines=d.chosen.filter(id=>T[id]).map(id=>{const p=(d.plans||{})[id]||{};return `${T[id].n}${p.action?" – "+p.action:""}${(p.look||(T[id].look||[])[0])?" (look-for: "+(p.look||T[id].look[0])+")":""}`});
+ const esc2=s=>String(s).replace(/\\/g,"\\\\").replace(/[,;]/g,m=>"\\"+m).replace(/\r?\n/g,"\\n");
+ const desc=[`Follow-up coaching visit with ${d.teacher||"teacher"}.`,g?`Goal: ${g.text}`:"",...lines.map(l=>"• "+l),"","Open Blueprint › Teachers › Observe follow-up."].filter(x=>x!==null).join("\n");
+ const fold=s=>s.match(/.{1,70}/g).join("\r\n ");
+ const now=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+ return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Blueprint//Coaching//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH","BEGIN:VEVENT",
+  `UID:${d.id}-followup@blueprint`,`DTSTAMP:${now}`,`DTSTART;VALUE=DATE:${ymd}`,`DTEND;VALUE=DATE:${ymd2}`,
+  fold(`SUMMARY:${esc2("Coaching follow-up – "+(d.teacher||"teacher")+(d.cls?" ("+d.cls+")":""))}`),fold(`DESCRIPTION:${esc2(desc)}`),"TRANSP:TRANSPARENT",
+  "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:Coaching follow-up","TRIGGER:-PT15H","END:VALARM","END:VEVENT","END:VCALENDAR"].join("\r\n")}
+async function addToCalendar(d){const ics=icsFor(d);if(!ics){toast("Add a follow-up date in step 5 first.");return}
+ if(await download(`${followupDate(d)} ${cleanName(d.teacher)||"Teacher"} – follow-up.ics`,ics,"text/calendar"))toast("Calendar invite downloaded – open it to add the follow-up to Outlook.",5000)}
+
+/* ---------- 3. Sample data for practice / PL ---------- */
+function makeSampleData(){
+ const ev=(k,n,step,start)=>Array.from({length:n},(_,i)=>({k,t:Math.round((start||0)+i*step)}));
+ const ob=(c,secs,notes)=>{const evs=[];Object.entries(c).forEach(([k,n])=>{if(["positive","corrective","selfreport","monitor"].includes(k))return;evs.push(...ev(k,n,(secs-60)/Math.max(n,1),20+Math.random()*30))});return {counts:c,events:evs.sort((a,b)=>a.t-b.t),notes:notes||[],roster:{list:[],hits:{}},elapsed:secs,startedAt:null}};
+ const day=n=>{const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)};
+ const lk=id=>(T[id]&&T[id].look||[])[0]||"";
+ const C=(id,prev,teacher,cls,date,goal,macro,tech,action,obsc,notes,rating,follow)=>norm({id,prev,sample:true,teacher,coach:"Sample coach",cls,date,focus:"Sample lesson",
+  notice:[{did:"Clear routine at the start of the lesson",effect:"Students settled and started straight away"}],reflect:{well:"Students knew what to do",work:"More students answering"},
+  goals:[{id:"g",text:goal,macro,pid:(macroById(macro).probs[0]||{}).id}],goal:"g",macros:[macro],probs:[(macroById(macro).probs[0]||{}).id].filter(Boolean),chosen:[tech],plans:{[tech]:{action,look:lk(tech),when:"Maths, every lesson this week",follow,rehearsed:true}},
+  obs:ob(obsc,1200,notes),followups:rating?[{date:follow,ratings:{[tech]:{level:rating,note:""}}}]:[]});
+ const lf=(id,n)=>Array.from({length:n},(_,i)=>({t:150+i*240,text:lk(id),lf:lk(id),type:"note"}));
+ return [
+  C("smp-a1",null,"Sample – Ms Rivera","5/6R",day(56),"Every student answers every question","otr","turnTalk","Turn and talk before every question",{volunteer:15,coldCall:1,choral:2,turnTalk:1,positive:3,corrective:5,check:0,selfreport:3},[],"partly",day(49)),
+  C("smp-a2","smp-a1","Sample – Ms Rivera","5/6R",day(35),"Every student answers every question","otr","coldCall","Turn and talk, then invite students to share",{volunteer:9,coldCall:4,choral:3,turnTalk:4,positive:5,corrective:4,check:1,selfreport:1},lf("turnTalk",2),"secure",day(28)),
+  C("smp-a3","smp-a2","Sample – Ms Rivera","5/6R",day(14),"The teacher has evidence from every student","cfu","mwb","Boards for every check during the explanation",{volunteer:4,coldCall:8,choral:4,turnTalk:5,mwb:6,positive:9,corrective:2,check:1},lf("coldCall",3),"",day(-3)),
+  C("smp-b1",null,"Sample – Mr Chen","3/4C",day(42),"Students give full attention within 5 seconds","routines","attention","Signal once, wait, scan",{volunteer:8,coldCall:2,choral:3,positive:2,corrective:9,check:0},[],"partly",day(35)),
+  C("smp-b2","smp-b1","Sample – Mr Chen","3/4C",day(21),"Students give full attention within 5 seconds","routines","positiveFraming","Describe the next action, not the problem",{volunteer:7,coldCall:3,choral:5,mwb:2,positive:7,corrective:4,check:1},lf("attention",2),"",day(-1)),
+  C("smp-c1",null,"Sample – Ms Okafor","F/1K",day(10),"Students know exactly what they did well and repeat it","behaviour","praise","Name the strategy when praising",{volunteer:6,coldCall:3,choral:8,signals:4,positive:6,corrective:3,check:1},[],"",day(4))
+ ].map(s=>{s.obs.events=s.obs.events.filter(e=>e.t<1200);return s})}
+function loadSample(){if(saved.some(s=>s.sample)){toast("Sample data is already loaded.");return}
+ saved=saved.concat(makeSampleData());persist("saved");teachTab="teachers";setView("saved");toast("Sample teachers loaded – explore Teachers, View progress and Patterns. Remove them from More when you’re done.",6000)}
+function removeSample(){const n=saved.filter(s=>s.sample).length;saved=saved.filter(s=>!s.sample);persist("saved");render();toast(n?`Removed ${n} sample cycles.`:"No sample data to remove.")}
+function sampleBanner(){return saved.some(s=>s.sample)?`<div class="card samplebar"><b>Sample data is loaded.</b> <span class="small">The “Sample –” teachers are made up for practice.</span><span class="spacer"></span><button class="btn alt sm" data-act="rmsample">Remove sample data</button></div>`:""}
+
+/* ---------- 4. Whole-school view: colleagues’ backups, used in Patterns only ---------- */
+let schoolView=(()=>{try{return JSON.parse(localStorage.getItem("cdp_school")||"[]")}catch(e){return []}})();
+let schoolOn=schoolView.length>0;
+function saveSchool(){try{localStorage.setItem("cdp_school",JSON.stringify(schoolView));return true}catch(e){toast("These backups are too large to keep in this browser – they’ll be used until you close Blueprint.",6000);return false}}
+async function addSchoolBackups(files){let added=0,skipped=0;
+ for(const f of files){try{const j=JSON.parse(await readFile(f));const list=(j.saved||[]).filter(s=>s&&s.id).map(norm);if(!list.length){skipped++;continue}
+  const coach=(list.find(s=>s.coach)||{}).coach||f.name.replace(/\.json$/i,"");
+  schoolView=schoolView.filter(x=>x.file!==f.name);schoolView.push({file:f.name,coach,added:today(),saved:list.filter(s=>!s.sample)});added++}catch(e){skipped++}}
+ saveSchool();schoolOn=true;render();toast(`${added} backup${added===1?"":"s"} added to the school view${skipped?` · ${skipped} file${skipped===1?"":"s"} skipped (not a Blueprint backup)`:""}.`,5000)}
+function schoolRecords(){if(!schoolOn)return [];const own=new Set(saved.map(s=>s.id));const seen=new Set();const out=[];
+ schoolView.forEach(b=>b.saved.forEach(s=>{if(own.has(s.id)||seen.has(s.id))return;seen.add(s.id);out.push(s)}));return out}
+function schoolBarHTML(){
+ return `<div class="card schoolbar"><div class="row" style="align-items:center"><b>School view</b><span class="small muted">Add other coaches’ backup files to see patterns across the whole school. They are used here only – they don’t appear in your Teachers list.</span><span class="spacer"></span>
+ <label class="btn alt sm" style="display:inline-block">Add coaches’ backups<input type="file" accept=".json" multiple id="schoolFiles" style="display:none"></label></div>
+ ${schoolView.length?`<div class="row" style="margin-top:8px;align-items:center;gap:8px"><label class="small"><input type="checkbox" id="schoolOn" ${schoolOn?"checked":""}> Include colleagues’ records</label>
+  ${schoolView.map((b,i)=>`<span class="tchip">${esc(b.coach)} · ${b.saved.length} cycles <button class="btn ghost" data-rmschool="${i}" aria-label="Remove ${esc(b.coach)}">✕</button></span>`).join("")}</div>`:""}</div>`}
 
 /* =====================================================================
    SHAREPOINT SAVING (synced folder via File System Access API + web link)
@@ -2005,6 +2075,10 @@ function bind(){
  all("[data-obsfollow]",b=>b.onclick=()=>{const c=saved.find(s=>s.id===b.dataset.obsfollow);if(!c)return;if(inProgress()&&D.id!==c.id)storeLocal(D,true);nextCycle(c)});
  all("[data-nextcycle]",b=>b.onclick=()=>{const s=saved.find(x=>x.id===b.dataset.nextcycle);if(s)nextCycle(s)});
  all("[data-printteacher]",b=>b.onclick=()=>doPrint(teacherSheet(b.dataset.printteacher)));
+ all("[data-ics]",b=>b.onclick=()=>{const c=saved.find(s=>s.id===b.dataset.ics);if(c)addToCalendar(norm(JSON.parse(JSON.stringify(c))))});
+ const sf=$("#schoolFiles");if(sf)sf.onchange=()=>{if(sf.files.length)addSchoolBackups([...sf.files]);sf.value=""};
+ const so=$("#schoolOn");if(so)so.onchange=()=>{schoolOn=so.checked;rerenderKeep()};
+ all("[data-rmschool]",b=>b.onclick=()=>{schoolView.splice(+b.dataset.rmschool,1);saveSchool();if(!schoolView.length)schoolOn=false;rerenderKeep()});
  all("[data-progress]",b=>b.onclick=()=>{curTeacher=b.dataset.progress;setView("progress")});
  all("[data-del]",b=>b.onclick=()=>{const id=b.dataset.del;if(b.dataset.sure){saved=saved.filter(x=>x.id!==id);persist("saved");rerenderKeep()}else{b.dataset.sure=1;b.textContent="Confirm delete";b.style.color="#b00020"}});
  // observation
@@ -2063,6 +2137,8 @@ async function act(x){
  if(x==="nucancel"){nuEdit=false;rerenderKeep()}
  if(x==="nusave"){const v=($("#nuText").value||"").split("\n").map(s=>s.trim()).filter(Boolean);if(v.length)nuances[curTech]=v;else delete nuances[curTech];persist("nuance");rebuild();nuEdit=false;rerenderKeep();toast(v.length?"Nuance saved – it will print on this technique’s cards and sheets.":"Nuance cleared.")}
  if(x==="progdoc"){(async()=>{const html=await progressSheet(curTeacher);if(await downloadDocx(`${today()} ${cleanName(curTeacher)} – coaching progress.docx`,html,`${curTeacher} – coaching progress`))toast("Progress downloaded as a Word document.",4000)})()}
+ if(x==="sample")loadSample();
+ if(x==="rmsample")removeSample();
  if(x==="ctxedit"){ctxOpen=true;rerenderKeep()}
  if(x==="ctxdone"){if(!(D.teacher||"").trim()){toast("Add the teacher’s name first.");return}ctxOpen=false;saveDraft();rerenderKeep()}
  if(x==="obsnote"){obsUI.note=!obsUI.note;rerenderKeep()}
