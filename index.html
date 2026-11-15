@@ -388,6 +388,28 @@ header.top .brand .bsep{width:1px;height:28px;background:rgba(255,255,255,.35)}
 table.mini{width:100%;border-collapse:collapse;font-size:13.5px}
 table.mini th{text-align:left;font-weight:700;color:var(--navy);border-bottom:2px solid var(--line);padding:6px 8px;font-size:12.5px}
 table.mini td{border-bottom:1px solid var(--line);padding:6px 8px;vertical-align:top}
+.stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:10px 0 8px}
+.stg{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 10px;text-align:left;cursor:pointer;font:inherit;color:var(--ink)}
+.stg b{display:block;font-size:13.5px;color:var(--navy)}.stg span{font-size:12px;color:var(--muted)}
+.stg.on{background:var(--navy);border-color:var(--navy)}.stg.on b,.stg.on span{color:#fff}
+.stg.done:not(.on) b::after{content:" ✓";color:var(--blue)}
+.anudge{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#F2F6FB;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:14px}
+.anudge.warnish{background:#FFF7E8;border-color:#F3D9A4}
+.evcard{margin-bottom:12px}.evchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.evchip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer;color:var(--ink)}
+.evchip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.ckl .ck{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:14px}
+.ckl .ckt{flex:1}.ckl .ckb{width:26px;height:26px;border-radius:6px;border:1.5px solid var(--b300,#85B7EB);background:#fff;font-weight:700;color:var(--blue);cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center}
+.ckl .ck.on .ckb{background:var(--blue);color:#fff;border-color:var(--blue)}
+.ckl .ck.emb{color:var(--muted)}.ckl .ck.emb .ckt{text-decoration:line-through}
+.ckfb{margin-top:8px;background:#EAF5EE;color:#155C33;border-radius:8px;padding:8px 10px;font-size:14px}
+.ckcard{margin-bottom:12px}.ckrow{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}.ckrow .ckt{flex:1;min-width:200px;font-size:14px}
+.ckseg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.ckseg button{border:0;background:#fff;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink)}
+.ckseg button+button{border-left:1px solid var(--line)}.ckseg button.on{background:var(--navy);color:#fff}
+.moves{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:0 0 12px}.moves summary{cursor:pointer;font-weight:700;color:var(--navy)}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:8px}.mgrid b{color:var(--navy);font-size:14px}
+.coachref{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:8px 12px}.coachref summary{cursor:pointer;font-weight:700;color:var(--navy)}
+@media(max-width:640px){.stages{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 </style>
 <link rel="manifest" href="manifest.webmanifest">
@@ -526,8 +548,9 @@ let saved = LS.get(KEYS.saved,[]);
 let custom = LS.get(KEYS.custom,{});
 let edits = LS.get(KEYS.edits,{});
 let settings = Object.assign({spUrl:"", school:"", playbook:[], timerMins:20, timerOn:false, helpSeen:false, schoolLogo:"", theme:null, schoolFocus:null}, LS.get(KEYS.settings,{}));
-const today = ()=>new Date().toISOString().slice(0,10);
-const blank = ()=>({id:"d"+Date.now(), teacher:"", coach:"", date:today(), cls:"", focus:"", notice:[], reflect:{well:"",work:""}, goals:[], goal:null, obsFocus:[], macros:[], probs:[], suggested:[], chosen:[], plans:{}, obs:null, followups:[]});
+const ymdL=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const today = ()=>ymdL(new Date());
+const blank = ()=>({id:"d"+Date.now(), teacher:"", coach:"", date:today(), cls:"", focus:"", notice:[], reflect:{well:"",work:""}, goals:[], goal:null, obsFocus:[], macros:[], probs:[], suggested:[], chosen:[], plans:{}, obs:null, followups:[], evidence:["live"], evNotes:"", priority:"", model:"one", members:"", direction:3, coachRef:{}, check:{}});
 let D = Object.assign(blank(), LS.get(KEYS.draft,null) || {});
 let view="home", step=1, curTech=null, prevView="library", editing=null;
 let libFilter={q:"",el:"",m:"",own:false,pb:false};
@@ -715,7 +738,7 @@ function observeHTML(){
  const run=!!o.startedAt, empty=!s.secs&&!o.events.length&&!o.notes.length;
  const lf=focusLookfors(), to=tallyOrder();
  const tallyGroup=gi=>{const g=TALLY[gi];return `<h3 style="margin:14px 0 8px">${g.g}</h3><div class="tally">${g.items.map(i=>`<div class="tbtn" data-tap="${i.k}" role="button" tabindex="0"><div class="tn">${esc(i.n)}</div><div class="td">${esc(i.d)}${i.cfu?`<span class="cfutag">${i.cfu==="whole"?"also a whole-class check":"also a check (one student)"}</span>`:""}</div><div class="tc">${o.counts[i.k]||0}</div><button class="tminus" data-untap="${i.k}" aria-label="Undo ${esc(i.n)}">−1</button></div>`).join("")}</div>`};
- return `${focusPickerHTML()}${followBanner()}<div class="obstop"><div class="clock" id="obsClock">${mmss(s.secs)}</div>
+ return `${alignNudges()}${evidenceHTML()}${focusPickerHTML()}${followBanner()}${obsChecklistHTML()}<div class="obstop"><div class="clock" id="obsClock">${mmss(s.secs)}</div>
   <button class="btn ${run?"alt":"hi"}" data-act="obstoggle">${run?"Pause":(s.secs?"Resume":"Start timer")}</button>${s.secs?`<button class="btn ghost" data-act="obsreset">Reset</button>`:""}
   <span class="spacer"></span>
   <button class="btn alt sm ${obsUI.note?"on":""}" data-act="obsnote">+ Note – anything else${o.notes.length?` (${o.notes.length})`:""}</button>
@@ -884,7 +907,7 @@ function followupModal(id){
  mb.querySelector("[data-m=observe]").onclick=()=>{hideModal();nextCycle(c)};
 }
 function nextCycle(c){
- D=norm(blank());D.teacher=c.teacher;D.coach=c.coach;D.cls=c.cls;D.prev=c.id;D.obs=blankObs();step=0;ctxOpen=false;{const pg=(c.goals||[]).find(x=>x.id===c.goal);if(pg)D.obsFocus=[pg.pid?{type:"goal",id:pg.pid}:pg.macro?{type:"macro",id:pg.macro}:null].filter(Boolean)}saveDraft();setView("debrief");
+ D=norm(blank());D.teacher=c.teacher;D.coach=c.coach;D.cls=c.cls;D.prev=c.id;D.obs=blankObs();step=0;ctxOpen=false;{const pg=(c.goals||[]).find(x=>x.id===c.goal);if(pg)D.obsFocus=[pg.pid?{type:"goal",id:pg.pid}:pg.macro?{type:"macro",id:pg.macro}:null].filter(Boolean)}saveDraft();if(agreementFor(D.teacher)){setView("debrief")}else{agreeT=D.teacher;setView("agree");toast(`Set up the coaching agreement with ${esc(D.teacher)} first.`,4000)}
  toast(`New cycle started for ${esc(c.teacher)}. Last cycle’s action steps are shown for reference.`,5000);
 }
 
@@ -892,7 +915,7 @@ function nextCycle(c){
    HOME (dashboard), MORE, HELP
    ===================================================================== */
 function followupsDue(){
- const lim=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+ const lim=ymdL(new Date(Date.now()+7*864e5));
  const out=[];
  saved.forEach(s=>{
   const dates=s.chosen.map(c=>(s.plans[c]||{}).follow).filter(Boolean).sort();
@@ -910,7 +933,7 @@ function homeHTML(){
  const g=curGoal();
  return `${backupNag()}<div class="hero"><img src="${LOGO}" alt=""><div><h1>Blueprint</h1><div style="font-weight:700;color:var(--blue)">Instructional coaching: observe · debrief · practise · follow up</div></div></div>
  <div class="dash">
-  <button class="bigstart" data-act="newcycle"><span class="bs1">Start a coaching cycle</span><span class="bs2">Observe the lesson, then discuss it together in five steps</span></button>
+  <button class="bigstart" data-act="newcycle"><span class="bs1">Start a coaching cycle</span><span class="bs2">Agree how you’ll work together, observe, then talk it through</span></button>
   ${inProgress()?`<div class="card cont"><div class="small muted">Continue where you left off</div><h3 style="margin:4px 0">${esc(D.teacher||"Untitled debrief")}</h3>
    <div class="small">${step===0?"Observing":"Step "+step+" of 5 – "+STEPS[step-1][0]}${g?` · Goal: ${esc(g.text)}`:""}</div>
    <button class="btn hi" style="margin-top:10px" data-act="resume">Continue →</button></div>`:""}
@@ -939,7 +962,7 @@ function moreHTML(){
 function resourcesPage(){return `<div class="row"><button class="btn alt sm" data-go="more">← More</button></div><h1 style="margin-top:10px">VTLM 2.0 and PCMS resources</h1>${resourcesHTML()}
  <p class="small muted" style="margin-top:20px">Blueprint’s technique plays are written for coaching conversations. They are organised by the strategies and practices in the Department’s VTLM 2.0 guides and the Positive Classroom Management Strategies, and draw on ideas from Tom Sherrington and Oliver Caviglioli’s <i>WalkThrus</i>, Doug Lemov’s <i>Teach Like a Champion</i>, and Tom Sherrington and Bron Ryrie Jones’ work on responsive teaching. See the original sources for their full descriptions.</p>`}
 function showHelp(){
- const st=[["Observe","Watch the lesson. Tap tallies and add notes as evidence for the conversation."],["Appreciative noticing","Name what worked and its effect on students."],["Inviting reflection","Ask what went well and what they’d like to work on."],["Canvassing possible goals","Put a few goals on the table and agree one."],["Identify the technique","Choose a best-bet technique for the goal."],["Model / show","Show it, let the teacher try it, plan when."],["Follow up","Visit again, record how it went, start the next cycle."]];
+ const st=[["Observe","Watch the lesson. Tap tallies and add notes as evidence for the conversation."],["Appreciative noticing","Name what worked and its effect on students."],["Inviting reflection","Ask what went well and what they’d like to work on."],["Canvassing possible goals","Put a few goals on the table and agree one."],["Identify the technique","Choose a best-bet technique for the goal."],["Explain, model, rehearse","Walk through the checklist, model it, the teacher rehearses, plan when."],["Implement and improve","The teacher uses it; visit again, review the checklist, start the next cycle."]];
  showModal(`<div class="row"><img src="${LOGO}" alt="" style="width:48px;height:48px"><h2 style="margin:0">How Blueprint works</h2></div>
  <ol class="helpsteps">${st.map(([a,b],i)=>`<li><span class="hn">${i===0?"0":i===6?"↻":i}</span><div><b>${a}</b><div class="small muted">${b}</div></div></li>`).join("")}</ol>
  <p class="small muted">Everything saves automatically in this browser. Save conversations to SharePoint and download a backup file (More → Download backup) so nothing is lost.</p>
@@ -949,7 +972,7 @@ function showHelp(){
 
 /* ---------- debrief timer ---------- */
 let DT={start:null,elapsed:0};
-const PHASES=[["Noticing",0.15],["Reflection",0.15],["Goals",0.2],["Technique",0.15],["Model / show",0.35]];
+const PHASES=[["Noticing",0.15],["Reflection",0.15],["Goals",0.2],["Technique",0.15],["Learn",0.35]];
 function dtElapsed(){return DT.elapsed+(DT.start?(Date.now()-DT.start)/1000:0)}
 function timerHTML(){
  const total=(settings.timerMins||20)*60, e=dtElapsed(), left=total-e;
@@ -985,19 +1008,21 @@ function norm(d){
 D=norm(D);
 const curGoal=()=>D.goals.find(g=>g.id===D.goal)||null;
 
-const STEPS=[["Appreciative noticing","What worked"],["Inviting reflection","The teacher’s view"],["Canvassing possible goals","Agree one goal"],["Identify the technique","Best bets"],["Model / show","Show, try, plan"]];
+const STEPS=[["Appreciative noticing","What worked"],["Inviting reflection","The teacher’s view"],["Canvassing possible goals","Agree one goal"],["Identify the technique","Best bets"],["Explain, model, rehearse","Learn it"]];
 let ctxOpen=false;
-function hasObs(){const o=D.obs;return !!(o&&(o.events.length||o.notes.length||obsElapsed(o)>=60))}
+function hasObs(){const o=D.obs;return !!((D.evNotes||"").trim()||(o&&(o.events.length||o.notes.length||obsElapsed(o)>=60)))}
 function ctxHTML(){
  if(step===0)return "";
  const filled=(D.teacher||"").trim();
- if(filled&&!ctxOpen)return `<div class="ctxline"><b>${esc(D.teacher)}</b>${D.cls?" · "+esc(D.cls):""} · ${esc(D.date)}${D.focus?" · "+esc(D.focus):""}${D.coach?` <span class="muted">· Coach: ${esc(D.coach)}</span>`:""}<button class="btn ghost" data-act="ctxedit">✎ Edit</button></div>`;
+ if(filled&&!ctxOpen)return `<div class="ctxline"><b>${esc(D.teacher)}</b>${D.cls?" · "+esc(D.cls):""} · ${esc(D.date)}${D.focus?" · "+esc(D.focus):""}${D.coach?` <span class="muted">· Coach: ${esc(D.coach)}</span>`:""}${D.model&&D.model!=="one"?` <span class="pill">${esc(modelName(D.model))}${D.members?": "+esc(D.members):""}</span>`:""}<button class="btn ghost" data-act="ctxedit">✎ Edit</button></div>`;
  return `<div class="ctxbar">
   <div><label class="f">Teacher</label><input class="t" data-f="teacher" list="tnames" value="${esc(D.teacher)}" placeholder="Name"><datalist id="tnames">${teacherNames().map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div>
   <div><label class="f">Date</label><input class="t" type="date" data-f="date" value="${esc(D.date)}"></div>
   <div><label class="f">Class</label><input class="t" data-f="cls" value="${esc(D.cls)}"></div>
   <div><label class="f">Coach</label><input class="t" data-f="coach" value="${esc(D.coach)}"></div>
   <div class="wide"><label class="f">Lesson</label><input class="t" data-f="focus" value="${esc(D.focus)}"></div>
+  <div><label class="f">Coaching model</label><select class="t" data-f="model">${MODELS.map(([k,l])=>`<option value="${k}" ${D.model===k?"selected":""}>${l}</option>`).join("")}</select></div>
+  <div><label class="f">Group or team members</label><input class="t" data-f="members" value="${esc(D.members||"")}" placeholder="For group or team coaching"></div>
   <div class="wide" style="text-align:right"><button class="btn sm" data-act="ctxdone">Done</button></div>
  </div>`;
 }
@@ -1006,8 +1031,10 @@ function debriefHTML(){
  let h=`<div class="row"><h1>Coaching cycle</h1><span class="spacer"></span>${D.prev?`<span class="pill">Cycle ${cycleNo(D)}</span>`:""}<button class="btn alt sm" data-act="newcycle">Start new</button></div>
  ${ctxHTML()}
  ${settings.timerOn&&step>0?timerHTML():""}
+ ${stagesHTML()}
  <div class="stepper"><div class="s obs ${step===0?"on":""} ${hasObs()?"done":""}" data-step="0"><b>Observe</b>Watch the lesson</div>${STEPS.map((s,i)=>`<div class="s ${step===i+1?"on":""} ${stepDone(i+1)?"done":""}" data-step="${i+1}"><b>${i+1}. ${s[0]}</b>${s[1]}</div>`).join("")}</div>
  ${g&&step>3?`<div class="goalbar"><span class="small muted">Agreed goal</span> <b>${esc(g.text)}</b>${g.macro?`<div class="small gbv">${vtlmLine(g.macro)}</div>`:""}</div>`:""}`;
+ if(step>=1&&step<=3)h+=movesHTML();
  h+=[observeHTML,step1,step2,step3,step4,step5][step]();
  h+=stickyBar();
  return h;
@@ -1015,7 +1042,7 @@ function debriefHTML(){
 function stickyBar(){
  let msg="",btn="";
  if(step===3&&curGoal()&&(curGoal().pid||curGoal().macro)){msg=`Goal agreed: <b>${esc(curGoal().text)}</b>`;btn=`<button class="btn hi" data-step="4">Next: identify the technique →</button>`}
- if(step===4&&D.chosen.length){msg=`Chosen: ${D.chosen.map(c=>`<span class="schip"><b>${esc(T[c].n)}</b><button class="btn ghost" data-unchoose="${c}" aria-label="Remove ${esc(T[c].n)}" title="Remove">✕</button></span>`).join(" ")}`;btn=`<button class="btn hi" data-step="5">Next: model / show →</button>`}
+ if(step===4&&D.chosen.length){msg=`Chosen: ${D.chosen.map(c=>`<span class="schip"><b>${esc(T[c].n)}</b><button class="btn ghost" data-unchoose="${c}" aria-label="Remove ${esc(T[c].n)}" title="Remove">✕</button></span>`).join(" ")}`;btn=`<button class="btn hi" data-step="5">Next: explain, model, rehearse →</button>`}
  return msg?`<div class="stickybar"><span class="sbm">${msg}</span>${btn}</div><div style="height:70px"></div>`:"";
 }
 function cycleNo(d){let n=1,p=d.prev;const seen=new Set();while(p&&!seen.has(p)){seen.add(p);n++;const x=saved.find(s=>s.id===p);p=x&&x.prev}return n}
@@ -1084,7 +1111,7 @@ function step3(){
   MACROS.forEach(m=>{if(goalArea&&m.id!==goalArea)return;m.probs.forEach(p=>{const txt=(GOALS[p.id]+" "+p.t+" "+m.n).toLowerCase();if(!q||q.split(/\s+/).every(w=>txt.includes(w)))push(p.id)})});
   if(q&&!hits.length)matchGoals(q,8,goalArea||null).forEach(g=>push(g.pid,g.tech));
  }
- return `<div class="tip"><b>Put a few possible goals on the table, then agree on one.</b> Goals describe what students will do. The teacher’s action comes in step 5.</div>
+ return `<div class="tip"><b>Put a few possible goals on the table, then agree on one.</b> Start from the change you want to see in students – goals describe what students will do. The teacher’s action comes in step 5.</div>
  ${D.reflect.work?`<div class="card" style="margin-bottom:12px"><span class="small muted">The teacher would like to work on:</span> <b>${esc(D.reflect.work)}</b></div>`:""}
  ${sug.length?`<h3>Suggested goals</h3><div class="grid g2">${sug.map((s,i)=>`<div class="gsug"><span class="pill ${s.src==="teacher"?"sug":s.src==="playbook"?"pb":""}">${SRC[s.src]}</span><div class="gt">${esc(s.text)}</div>${s.auto?`<div class="small">Closest match: <b>${esc(GOALS[s.pid])}</b> <span class="muted">· ${esc(macroById(s.macro).n)}</span></div>`:s.pid?`<div class="small muted">${esc(macroById(s.macro).n)}${s.why?` · ${esc(s.why)}`:""}${s.tech?` · ${esc(T[s.tech].n)}`:""}</div>`:""}<div class="row" style="gap:6px"><button class="btn sm hi" data-agreesug="${i}">Agree this goal</button><button class="btn sm alt" data-addsug="${i}">+ Add as an option</button></div></div>`).join("")}</div>`:""}
  ${D.goals.length?`<h3 style="margin-top:16px">Possible goals</h3>${D.goals.map(g=>`<div class="goal ${D.goal===g.id?"on":""}">
@@ -1097,6 +1124,7 @@ function step3(){
  <select class="t" id="goalArea" style="width:auto;max-width:100%"><option value="">All focus areas</option>${ELEMENTS.map(e=>`<optgroup label="${e.n}">${MACROS.filter(m=>m.el===e.id).map(m=>`<option value="${m.id}" ${goalArea===m.id?"selected":""}>${esc(m.n)}</option>`).join("")}</optgroup>`).join("")}</select></div>
  ${hits.length?`<div class="hits">${hits.slice(0,12).map(({p,m,tech})=>`<div class="bprob"><div><div>${esc(GOALS[p.id])}</div><div class="small muted">${esc(m.n)} · Seen: ${esc(p.t)}${tech?` · <b>${esc(T[tech].n)}</b> is a best bet`:""}</div></div><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn sm hi" data-agreeprob="${p.id}">Agree</button><button class="btn sm alt" data-addprob="${p.id}" ${D.goals.some(g=>g.pid===p.id)?"disabled":""}>+ Option</button></div></div>`).join("")}${hits.length>12?`<p class="small muted">${hits.length-12} more – narrow your search.</p>`:""}</div>`:(q||goalArea)?`<p class="small muted">No matching goals. Write your own below.</p>`:""}
  <div class="row" style="margin-top:10px"><input class="t" id="newGoal" style="flex:1;min-width:240px" placeholder="Or write a goal in your own words"><button class="btn alt sm" data-act="addgoal">+ Add goal</button></div>
+ ${priorityHTML()}
  ${navRow(2,null)}`;
 }
 function applyGoal(){
@@ -1130,17 +1158,18 @@ function techCard(id,x,first){const t=T[id],el=techEl(id),ch=D.chosen.includes(i
 
 /* 5. Model / show */
 function step5(){
- return `<div class="tip"><b>Show what it looks like, then let the teacher try it.</b> Walk through the play, watch a short example if you have one, model it, then the teacher rehearses while you play the class. Finish by planning when it will happen and when you’ll see it.</div>
- ${D.chosen.map(id=>{if(!T[id])return"";const t=T[id],p=D.plans[id]||(D.plans[id]={action:"",rehearsed:false,when:"",follow:"",look:"",rnote:""});const v=videos[id];const ms=(moments[id]||[]).slice().sort((a,b)=>a.s-b.s);
+ return `<div class="tip"><b>Learn: explain, model, rehearse.</b> Walk through each key ingredient on the checklist, watch a short example if you have one, model it, then the teacher rehearses while you play the class. Finish by planning when it will happen and when you’ll see it.</div>
+ ${D.chosen.map(id=>{if(!T[id])return"";const t=T[id],p=D.plans[id]||(D.plans[id]={action:"",rehearsed:false,when:"",follow:addDays(D.date,cycleWeeks(D.teacher)*7),look:"",rnote:"",emb:embFor(D.teacher,id,D.id),reh:{},modelType:""});const v=videos[id];const ms=(moments[id]||[]).slice().sort((a,b)=>a.s-b.s);
  return `<div class="plan-c"><div class="row"><span class="pill ${techEl(id)}">${esc(macroById(t.m).n)}</span><h3 style="margin:0">${esc(t.n)}</h3><span class="spacer"></span><button class="btn alt sm" data-tech="${id}">Open full play</button><button class="btn ghost sm" data-unchoose="${id}" title="Remove this technique">✕ Remove</button></div>
  <div class="ms">
-  <div class="msc"><div class="mh">1 · Show it</div>
-   <ol class="playlist">${(t.steps||[]).map(s=>`<li><b>${esc(s[0])}.</b> ${esc(s[1])}</li>`).join("")}</ol>${(t.nu||[]).length?`<details class="nu5"><summary>Nuance</summary><ul>${t.nu.map(l=>`<li>${esc(l)}</li>`).join("")}</ul></details>`:""}
+  <div class="msc"><div class="mh">1 · Explain and model it</div>
+   <ol class="playlist">${(t.steps||[]).map(s=>`<li><b>${esc(s[0])}.</b> ${esc(s[1])}</li>`).join("")}</ol>${(t.nu||[]).length?`<details class="nu5"><summary>Where you can adapt (Nuance)</summary><ul>${t.nu.map(l=>`<li>${esc(l)}</li>`).join("")}</ul></details>`:""}
    ${v?`<div class="small">${videoBlock(v,true)}${ms.length?`<div style="margin-top:6px"><b>Moments to watch</b></div><ul class="mlist">${ms.map(x=>`<li><b>${esc(x.t)}</b> ${esc(x.note)}</li>`).join("")}</ul>`:""}</div>`:`<div class="small muted">No practice video linked yet – add one on the technique page.</div>`}
-   ${t.say?`<div class="say" style="margin-top:8px"><b>Coach models it:</b> ${esc(t.say)}</div>`:""}</div>
-  <div class="msc"><div class="mh">2 · Teacher tries it</div>
+   ${t.say?`<div class="say" style="margin-top:8px"><b>Coach models it:</b> ${esc(t.say)}</div>`:""}
+   <label class="f" style="margin-top:8px">Model used</label><select class="t" data-plan="${id}|modelType"><option value="">Choose…</option>${MODEL_TYPES.map(m=>`<option ${p.modelType===m?"selected":""}>${m}</option>`).join("")}</select></div>
+  <div class="msc"><div class="mh">2 · Teacher rehearses it</div>
    <label class="row small" style="gap:6px"><input type="checkbox" data-plan="${id}|rehearsed" ${p.rehearsed?"checked":""}> Rehearsed in the debrief</label>
-   <label class="f" style="margin-top:8px">How did the rehearsal go? What will you tweak?</label><textarea class="t" data-plan="${id}|rnote">${esc(p.rnote||"")}</textarea></div>
+   ${rehChecklistHTML(id,p)}<label class="f" style="margin-top:8px">How did the rehearsal go? What will you tweak?</label><textarea class="t" data-plan="${id}|rnote">${esc(p.rnote||"")}</textarea></div>
   <div class="msc"><div class="mh">3 · Plan it</div>
    <label class="f">Action step (what the teacher will do)</label><textarea class="t" data-plan="${id}|action" placeholder="e.g. In the explanation, ask each question to the whole class, give a quick turn and talk, then invite students to share.">${esc(p.action)}</textarea>
    <label class="f" style="margin-top:8px">Success look-for</label><select class="t" data-plan="${id}|look"><option value="">Choose a look-for…</option>${(t.look||[]).map(l=>`<option ${p.look===l?"selected":""}>${esc(l)}</option>`).join("")}</select>
@@ -1157,8 +1186,10 @@ function finishModal(){
  <button class="fbtn" data-m="card"><b>Download the teacher’s action card</b><span>Word document – goal, technique, steps, look-for, follow-up</span></button>
  <button class="fbtn" data-m="ics" ${followupDate(D)?"":"disabled"}><b>Add follow-up to calendar</b><span>${followupDate(D)?`An Outlook invite for ${esc(followupDate(D))}`:"Add a follow-up date in step 5 first"}</span></button>
  <button class="fbtn" data-m="plan"><b>Download the full plan</b><span>Word document – the coach’s record with technique sheets</span></button></div>
+ ${coachRefHTML()}
  <div class="row" style="margin-top:12px"><span class="spacer"></span><button class="btn hi" data-m="done">Done</button></div>`);
  const mb=$("#modal");
+ {const sv=()=>{D.direction=+$("#crDir").value;D.coachRef={worked:$("#crWorked").value,diff:$("#crDiff").value};saveDraft();storeLocal(D,true)};["#crDir","#crWorked","#crDiff"].forEach(s=>{const e=$(s);if(e){e.oninput=sv;e.onchange=sv}})}
  mb.querySelector("[data-m=sp]").onclick=()=>{hideModal();saveToSharePoint(D)};
  mb.querySelector("[data-m=ics]").onclick=()=>addToCalendar(D);
  mb.querySelector("[data-m=card]").onclick=async()=>{if(await downloadDocx(cardFilename(D).replace(/\.html$/,".docx"),actionCardSheet(D),`${D.teacher} – action card`))toast("Action card downloaded as a Word document.",4000)};
@@ -1202,10 +1233,10 @@ function teacherJourney(name){
   const lv=(s.chosen||[]).map(id=>latestLevel(s,id)).filter(Boolean);
   return {id:s.id,date:s.date,goal:g?g.text:"",techs:(s.chosen||[]).filter(id=>T[id]).map(id=>T[id].n),otr:st?st.otrPerMin:null,level:lv.length?lv[lv.length-1]:""}});
 }
-const TREND={up:["▲","Improved"],down:["▼","Lower"],same:["●","Steady"]};
+const TREND={up:["▲","Towards the goal"],down:["▼","Away from the goal"],same:["●","About the same"]};
 function growthSummary(gd){
  if(!gd)return "";const bits=[];
- if(gd.total)bits.push(`${gd.up} of ${gd.total} measure${gd.total>1?"s":""} improved since ${gd.pc.date}`);
+ if(gd.total)bits.push(`${gd.up} of ${gd.total} measure${gd.total>1?"s":""} moved towards the goal since ${gd.pc.date}`);
  const seen=gd.steps.filter(s=>s.nowSeen>0);if(seen.length)bits.push(`the agreed look-for was seen ${seen.map(s=>s.nowSeen+"×").join(", ")} today`);
  return bits.length?bits.join("; ")+".":"";
 }
@@ -1282,13 +1313,13 @@ function techHTML(id){const t=T[id],m=macroById(t.m),el=elById(m.el),v=videos[id
   <div>
    <h2>The play – step by step</h2>
    <div class="steps">${(t.steps||[]).map((s,i)=>`<div class="step"><div class="n">${i+1}</div><div><h3>${esc(s[0])}</h3><p>${esc(s[1])}</p></div></div>`).join("")}</div>
-   <div class="card nuance"><div class="row" style="align-items:center"><h3 style="margin:0">Nuance</h3><span class="small muted">our school’s tweaks</span><span class="spacer"></span>${nuEdit?"":`<button class="btn ghost pen" data-act="nuedit" aria-label="Edit nuance" title="Add or edit tweaks">✎</button>`}</div>
+   <div class="card nuance"><div class="row" style="align-items:center"><h3 style="margin:0">Where you can adapt</h3><span class="small muted">Nuance – our school’s tweaks that keep it working</span><span class="spacer"></span>${nuEdit?"":`<button class="btn ghost pen" data-act="nuedit" aria-label="Edit nuance" title="Add or edit tweaks">✎</button>`}</div>
    ${nuEdit?`<p class="small muted" style="margin:6px 0">The small changes your school makes that still keep the technique working – one per line. E.g. “Use ‘Eyes on me, 3-2-1’ as our attention call” or “With 5B, partners are set by the seating plan”.</p><textarea class="t" id="nuText" style="min-height:110px">${esc((t.nu||[]).join("\n"))}</textarea><div class="row" style="margin-top:8px"><button class="btn sm hi" data-act="nusave">Save</button><button class="btn ghost sm" data-act="nucancel">Cancel</button></div>`
    :(t.nu||[]).length?`<ul>${t.nu.map(l=>`<li>${esc(l)}</li>`).join("")}</ul>`:`<p class="small muted" style="margin:6px 0 0">No tweaks added yet.</p>`}</div>
   </div>
   <div class="grid" style="align-content:start">
    ${t.w?`<div class="card"><h3>Why it works</h3><p style="margin:0">${esc(t.w)}</p></div>`:""}
-   ${(t.look||[]).length?`<div class="card"><h3>Look-fors (what success looks like)</h3><ul class="tick">${t.look.map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div>`:""}
+   ${(t.look||[]).length?`<div class="card"><h3>Key ingredients – the checklist</h3><p class="small muted" style="margin:-4px 0 6px">The observable components that stay consistent in every classroom. Used to explain, rehearse, observe and self-review – a noticing tool, not a compliance check.</p><ul class="tick">${t.look.map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div>`:""}
    ${(t.pit||[]).length?`<div class="card"><h3>Common pitfalls</h3><ul class="tick cross">${t.pit.map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div>`:""}
    ${t.say?`<div class="say"><b>Rehearse it in the debrief:</b> ${esc(t.say)}</div>`:""}
    <div class="card small"><b>Where it fits in VTLM 2.0:</b> ${el.n} › ${esc(m.v)}<div class="guide-links">Read the guide: ${macroLinks(m.id)}</div>${(t.also||[]).length?`<br><b>Also supports:</b> ${t.also.map(a=>macroById(a)?esc(macroById(a).n):"").filter(Boolean).join(", ")}`:""}<br><b>Best bet for:</b> ${probsOfTech(id).map(p=>esc(probById(p).t)).join("; ")||"<span class='muted'>not linked to any problem yet – use Edit to link it</span>"}</div>
@@ -1363,7 +1394,7 @@ function editHTML(){
   ${d.steps.length<8?`<button class="btn alt sm" data-act="addstep">+ Add step</button>`:""}
  </div>
  <div class="grid g2" style="margin-top:14px">
-  <div class="card"><label class="f">Look-fors (one per line)</label><textarea class="t" style="min-height:100px" data-elines="look">${esc((d.look||[]).join("\n"))}</textarea></div>
+  <div class="card"><label class="f">Key ingredients / look-fors (one per line)</label><textarea class="t" style="min-height:100px" data-elines="look">${esc((d.look||[]).join("\n"))}</textarea></div>
   <div class="card"><label class="f">Common pitfalls (one per line)</label><textarea class="t" style="min-height:100px" data-elines="pit">${esc((d.pit||[]).join("\n"))}</textarea></div>
  </div>
  <div class="card" style="margin-top:14px"><label class="f">Rehearse it in the debrief</label><textarea class="t" data-e="say" placeholder="What will the teacher practise with the coach?">${esc(d.say)}</textarea></div>
@@ -1437,6 +1468,7 @@ function settingsHTML(){
   </div>
  </div>
  ${sheetSettingsHTML()}
+ <div class="card" style="margin-top:14px"><h2>Cycle length</h2><p class="small muted" style="margin-top:0">The default time between cycles. Follow-up dates are set from it, and Blueprint flags cycles that come too often. A teacher’s coaching agreement can set their own.</p><div class="row"><input class="t" type="number" min="1" max="10" id="cycleWeeks" value="${+settings.cycleWeeks||3}" style="width:90px"><span>weeks</span></div></div>
  <div class="card" style="margin-top:14px"><h2>Debrief timer</h2><label class="chk" style="margin-bottom:8px"><input type="checkbox" id="timerOn" ${settings.timerOn?"checked":""}> Show a timer during debriefs</label><div class="row"><label class="f" style="margin:0">Debrief length (minutes)</label><input class="t" id="timerMins" type="number" min="5" max="60" value="${settings.timerMins||20}" style="width:90px"><span class="small muted">Phases: noticing 15% · reflection 15% · goals 20% · technique 15% · model / show 35%</span></div></div>
 `;
 }
@@ -1562,7 +1594,7 @@ function sparkSVG(vals){const ok=vals.filter(v=>v!=null);if(ok.length<2)return "
 const LV_COL={secure:"#1e6b34",partly:"#b45309",notyet:"#9b1c1c"};
 function dueInfo(list){const last=list[list.length-1];const dates=(last.chosen||[]).map(c=>(last.plans[c]||{}).follow).filter(Boolean).sort();
  const done=(last.followups||[]).some(f=>f.date>=last.date);if(done)return {cls:"ok",txt:"Follow-up recorded"};if(!dates.length)return {cls:"none",txt:"No follow-up date"};
- const td=today(),d=dates[0];if(d<td)return {cls:"late",txt:"Follow-up overdue · "+d};const soon=new Date(Date.now()+7*864e5).toISOString().slice(0,10);return d<=soon?{cls:"soon",txt:"Follow-up due "+d}:{cls:"ok",txt:"Follow-up "+d}}
+ const td=today(),d=dates[0];if(d<td)return {cls:"late",txt:"Follow-up overdue · "+d};const soon=ymdL(new Date(Date.now()+7*864e5));return d<=soon?{cls:"soon",txt:"Follow-up due "+d}:{cls:"ok",txt:"Follow-up "+d}}
 /* ---------- Teachers tab: cards ---------- */
 function teacherCardsHTML(){
  const names=[...new Set(saved.map(tKey))].sort();
@@ -1577,7 +1609,7 @@ function teacherCardsHTML(){
    <div class="small">${last.chosen.filter(id=>T[id]).map(id=>{const l=latestLevel(last,id);return `<span class="tchip">${esc(T[id].n)}${l?` <i style="background:${LV_COL[l]}" title="${levelName(l)}"></i>`:""}</span>`}).join("")}</div>
    <div class="trow2"><div>${s0&&s0.pts.filter(p=>p.v!=null).length>=2?`${sparkSVG(s0.pts.map(p=>p.v))}<div class="small muted">Responses per minute${ch?` <span class="tr ${ch.trend}">${TREND[ch.trend][0]} ${s0.m.fmt(ch.a)} → ${s0.m.fmt(ch.b)}</span>`:""}</div>`:`<div class="small muted">Growth chart appears after two observed cycles</div>`}</div>
    <span class="due ${di.cls}">${esc(di.txt)}</span></div>
-   <div class="row" style="gap:6px;margin-top:10px"><button class="btn sm hi" data-progress="${esc(n)}">View progress</button><button class="btn sm alt" data-nextcycle="${last.id}">Start next cycle</button></div></div>`}).join("")}</div>`}
+   <div class="row" style="gap:6px;margin-top:10px"><button class="btn sm hi" data-progress="${esc(n)}">View progress</button><button class="btn sm alt" data-nextcycle="${last.id}">Start next cycle</button><button class="btn sm ghost" data-agreefor="${esc(n)}">${agreementFor(n)?"Agreement ✓":"Set up agreement"}</button></div></div>`}).join("")}</div>`}
 /* ---------- Progress page ---------- */
 function progressHTML(){
  const pd=progressData(curTeacher);if(!pd.list.length){return `<p class="muted">No cycles for this teacher.</p>`}
@@ -1585,7 +1617,7 @@ function progressHTML(){
  const link=spTeacherLink(curTeacher==="(No teacher name)"?"":curTeacher);
  return `<div class="row"><button class="btn alt sm" data-go="saved">← Teachers</button><span class="spacer"></span>${link?`<a class="btn alt sm" href="${esc(link)}" target="_blank" rel="noopener">SharePoint folder ↗</a>`:""}<button class="btn alt sm" data-act="progdoc">Download progress (Word)</button></div>
  <h1 style="margin-top:12px">${esc(curTeacher)} – progress</h1>
- <p class="lead">${pd.list.length} coaching cycle${pd.list.length>1?"s":""} from ${esc(pd.list[0].date)} to ${esc(pd.list[pd.list.length-1].date)}.${wins.length?` ${wins.filter(o=>o.c.trend==="up").length} of ${wins.length} measures have improved since the first observed cycle.`:""}</p>
+ <p class="lead">${pd.list.length} coaching cycle${pd.list.length>1?"s":""} from ${esc(pd.list[0].date)} to ${esc(pd.list[pd.list.length-1].date)}.${wins.length?` ${wins.filter(o=>o.c.trend==="up").length} of ${wins.length} measures have moved towards the goal since the first observed cycle.`:""}</p>
  ${wins.length?`<div class="kpis">${wins.slice(0,4).map(({x,c})=>`<div class="kpi"><span>${esc(x.m.label)}</span><b>${x.m.fmt(c.b)}</b><span class="tr ${c.trend}">${TREND[c.trend][0]} from ${x.m.fmt(c.a)}</span></div>`).join("")}</div>`:""}
  ${pd.series.length?`<h2>Growth in the classroom</h2><div class="charts">${pd.series.map(x=>{const c=changeOf(x.pts,x.m);return `<div class="chart card"><div class="row" style="align-items:baseline"><b>${esc(x.m.label)}</b>${c?`<span class="spacer"></span><span class="tr ${c.trend}">${TREND[c.trend][0]} ${TREND[c.trend][1]}</span>`:""}</div><div class="small muted">${esc(x.m.unit)}</div>${lineChartSVG(x.pts,x.m)}</div>`}).join("")}</div>`
   :`<div class="card"><p class="muted" style="margin:0">Charts appear once observations of at least a minute are recorded. Each new cycle adds a point.</p></div>`}
@@ -1632,7 +1664,7 @@ async function addToCalendar(d){const ics=icsFor(d);if(!ics){toast("Add a follow
 function makeSampleData(){
  const ev=(k,n,step,start)=>Array.from({length:n},(_,i)=>({k,t:Math.round((start||0)+i*step)}));
  const ob=(c,secs,notes)=>{const evs=[];Object.entries(c).forEach(([k,n])=>{if(["positive","corrective","selfreport","monitor"].includes(k))return;evs.push(...ev(k,n,(secs-60)/Math.max(n,1),20+Math.random()*30))});return {counts:c,events:evs.sort((a,b)=>a.t-b.t),notes:notes||[],roster:{list:[],hits:{}},elapsed:secs,startedAt:null}};
- const day=n=>{const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)};
+ const day=n=>{const d=new Date();d.setDate(d.getDate()-n);return ymdL(d)};
  const lk=id=>(T[id]&&T[id].look||[])[0]||"";
  const C=(id,prev,teacher,cls,date,goal,macro,tech,action,obsc,notes,rating,follow)=>norm({id,prev,sample:true,teacher,coach:"Sample coach",cls,date,focus:"Sample lesson",
   notice:[{did:"Clear routine at the start of the lesson",effect:"Students settled and started straight away"}],reflect:{well:"Students knew what to do",work:"More students answering"},
@@ -1837,7 +1869,7 @@ async function termReport(){
  <h3>Focus areas</h3>${top(countBy(L,s=>s.macros),k=>macroById(k)?macroById(k).n:k,"Focus area")}
  <h3>Techniques chosen as action steps</h3>${top(countBy(L,s=>s.chosen),k=>T[k]?T[k].n:k,"Technique")}`:""}
  ${walk}
- <h2>Next steps for discussion</h2><div class="lines">${"<div class='l'></div>".repeat(6)}</div></div>`;
+ <h2>Next steps for discussion</h2><div class="lines">${"<div class='l'></div>".repeat(6)}</div></div>${staffFeedbackHTML(L,WL)}`;
  if(await downloadDocx(`${today()} Coaching term report.docx`,html,"Coaching term report"))toast("Term report downloaded as a Word document.",4000);
 }
 
@@ -2029,6 +2061,207 @@ function actMore(x){
 }
 
 /* =====================================================================
+   DEPARTMENT INSTRUCTIONAL COACHING ALIGNMENT
+   Four-stage cycle · Agreement · key-ingredients checklist · evidence types ·
+   school-priority link · cycle length · coaching models · relational prompts ·
+   coach reflection · staff feedback
+   ===================================================================== */
+let agreements=LS.get("cdp_agreements",{});
+const persistAgreements=()=>{LS.set("cdp_agreements",agreements);markChanged()};
+const akey=t=>String(t||"").trim().toLowerCase();
+const agreementFor=t=>agreements[akey(t)]||null;
+let agreeT="";
+const MODELS=[["one","One-to-one"],["group","Small group"],["team","Team coaching"],["network","Coach shared across a network"],["mentor","Practice-focused mentoring (Career Start)"],["regional","Regional coaching support"]];
+const modelName=k=>(MODELS.find(m=>m[0]===k)||MODELS[0])[1];
+const EVIDENCE=[["live","Live observation"],["video","Video of practice"],["work","Student work"],["data","Assessment data"]];
+const MODEL_TYPES=["Coach modelled it live","Video of practice","Co-teaching","Documented lesson (e.g. Victorian Lesson Plans)","Observed a colleague"];
+const cycleWeeks=t=>{const a=agreementFor(t);return +(a&&a.weeks)||+settings.cycleWeeks||3};
+const addDays=(d,n)=>{const x=new Date((d||today())+"T00:00:00Z");x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10)};
+const daysBetween=(a,b)=>Math.round((new Date(b+"T00:00:00Z")-new Date(a+"T00:00:00Z"))/864e5);
+const NOT_PDP="Coaching record – for professional growth. Not for performance review or PDP.";
+
+/* ---------- four-stage strip ---------- */
+function curStage(){if(view==="agree")return "agree";if(step===5)return "learn";if(step===0&&D.prev)return "impl";return "identify"}
+function stagesHTML(){
+ const st=curStage(),a=agreementFor(D.teacher);
+ const S=[["agree","Agreement",a?"In place":"Set up the coaching"],["identify","Identify","Evidence and a goal"],["learn","Learn","Explain, model, rehearse"],["impl","Implement and improve","Use it, review, refine"]];
+ return `<div class="stages" role="navigation" aria-label="Coaching cycle stages">${S.map(([k,n,d])=>`<button class="stg ${st===k?"on":""} ${k==="agree"&&a?"done":""}" data-stage="${k}"><b>${n}</b><span>${d}</span></button>`).join("")}</div>`;
+}
+
+/* ---------- agreement ---------- */
+const AGREE_ITEMS=[["growth","Coaching is for professional growth, not evaluation"],["pdp","Coaching notes and observations stay separate from PDP and performance processes"],["confid","What we discuss stays between us unless we agree to share it"],["video","Video of practice may be used – the teacher decides how it’s used and shared"]];
+function agreeBlank(t){return {teacher:t,date:today(),coach:D.coach||settings.walker||"",items:{growth:true,pdp:true,confid:true,video:false},weeks:+settings.cycleWeeks||3,model:"one",meeting:"",review:3,priority:focusTech()?T[focusTech()].n:"",notes:"",reviews:[]}}
+function agreeHTML(){
+ const t=agreeT||D.teacher;
+ if(!t)return `${stagesHTML()}<h1 style="margin-top:8px">Start a coaching cycle</h1>
+ <p class="lead">Every cycle starts with the agreement. If you already have one with this teacher, you’ll go straight to Identify.</p>
+ <div class="card"><label class="f">Who are you coaching?</label><div class="row"><input class="t" id="agTeacher" list="agnames" style="flex:1;min-width:220px" placeholder="Teacher, or a group or team name"><datalist id="agnames">${[...new Set(teacherNames().concat(Object.values(agreements).map(a=>a.teacher)))].filter(Boolean).map(n=>`<option value="${esc(n)}">`).join("")}</datalist><button class="btn hi" data-act="agreeteacher">Continue →</button></div>
+ <div class="small muted" style="margin-top:8px">${Object.keys(agreements).length?`Agreements in place: ${Object.values(agreements).map(a=>esc(a.teacher)).join(", ")}`:"No agreements yet."}</div></div>`;
+ const a=agreementFor(t)||agreeBlank(t),isNew=!agreementFor(t);
+ const n=teacherJourney?teacherJourney(t).length:0;
+ return `<div class="row"><button class="btn alt sm" data-act="agreeback">← Back</button><span class="spacer"></span>${isNew?"":`<span class="pill">Agreed ${esc(a.date)}</span>`}</div>
+ ${stagesHTML()}
+ <h1 style="margin-top:8px">Coaching agreement – ${esc(t)}</h1>
+ <p class="lead">Set up the relationship and the practical arrangements before the first cycle. It’s done once, and reviewed at an agreed point.</p>
+ <div class="card"><h3>What we agree</h3>${AGREE_ITEMS.map(([k,l])=>`<label class="chk" style="display:flex;gap:8px;margin:6px 0"><input type="checkbox" data-ag="items.${k}" ${a.items[k]?"checked":""}> ${l}</label>`).join("")}</div>
+ <div class="card" style="margin-top:12px"><h3>Arrangements</h3><div class="ldgrid">
+  <div><label class="f">Coach</label><input class="t" data-ag="coach" value="${esc(a.coach)}"></div>
+  <div><label class="f">Coaching model</label><select class="t" data-ag="model">${MODELS.map(([k,l])=>`<option value="${k}" ${a.model===k?"selected":""}>${l}</option>`).join("")}</select></div>
+  <div><label class="f">Cycle length (weeks)</label><input class="t" type="number" min="1" max="10" data-ag="weeks" value="${esc(a.weeks)}"></div>
+  <div><label class="f">Meeting time</label><input class="t" data-ag="meeting" value="${esc(a.meeting)}" placeholder="e.g. Wednesdays 3:30pm"></div>
+  <div><label class="f">Review the relationship after cycle</label><input class="t" type="number" min="1" max="12" data-ag="review" value="${esc(a.review)}"></div>
+  <div><label class="f">School priority / professional learning</label><input class="t" data-ag="priority" value="${esc(a.priority)}" placeholder="e.g. Checking for understanding"></div>
+ </div><label class="f" style="margin-top:8px">Anything else we’ve agreed</label><textarea class="t" data-ag="notes" placeholder="e.g. Release time, how we’ll share video, what to do if a visit is missed">${esc(a.notes)}</textarea></div>
+ ${isNew?"":`<div class="card" style="margin-top:12px"><h3>Relationship reviews</h3>
+  ${(a.reviews||[]).length?`<table class="mini"><tr><th>Date</th><th>Decision</th><th>Notes</th></tr>${a.reviews.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.decision)}</td><td>${esc(r.note)}</td></tr>`).join("")}</table>`:`<p class="small muted" style="margin:0 0 8px">Review at cycle ${esc(a.review)}${n?` – ${n} cycle${n>1?"s":""} so far`:""}. Check the pairing, the cycle length and whether coaching is helping.</p>`}
+  <div class="row" style="margin-top:8px"><select class="t" id="rvDec" style="width:auto"><option>Continue as agreed</option><option>Continue with changes</option><option>Pause or end coaching</option><option>Change coach</option></select><input class="t" id="rvNote" style="flex:1;min-width:200px" placeholder="What we decided and why"><button class="btn alt sm" data-act="addreview">Record review</button></div></div>`}
+ <div class="row" style="margin-top:14px"><button class="btn alt" data-act="agreedoc">Download agreement (Word)</button><span class="spacer"></span><button class="btn hi" data-act="agreesave">${akey(D.teacher)===akey(t)?(isNew?"Save – go to Identify →":"Go to Identify →"):(isNew?"Save agreement":"Done")}</button></div>`;
+}
+function agreeSheet(t){
+ const a=agreementFor(t)||agreeBlank(t);
+ return `<div class="page">${head("Coaching agreement",t+" · "+a.date)}
+ <p>Instructional coaching is job-embedded professional learning. It works through cycles of evidence gathering, goal setting, learning, practice, feedback and refinement, focused on the change we want to see in students.</p>
+ <h2>What we agree</h2><table>${AGREE_ITEMS.map(([k,l])=>`<tr><td style="width:8%;text-align:center">${a.items[k]?"✓":"☐"}</td><td>${esc(l)}</td></tr>`).join("")}</table>
+ <h2>Arrangements</h2><table><tr><th style="width:34%">Teacher</th><td>${esc(t)}</td></tr><tr><th>Coach</th><td>${esc(a.coach)}</td></tr><tr><th>Coaching model</th><td>${esc(modelName(a.model))}</td></tr><tr><th>Cycle length</th><td>${esc(a.weeks)} weeks</td></tr><tr><th>Meeting time</th><td>${esc(a.meeting)}</td></tr><tr><th>School priority / professional learning</th><td>${esc(a.priority)}</td></tr><tr><th>Review the relationship</th><td>After cycle ${esc(a.review)}</td></tr>${a.notes?`<tr><th>Also agreed</th><td>${esc(a.notes).replace(/\n/g,"<br>")}</td></tr>`:""}</table>
+ <h2>The coaching cycle</h2><table><tr><th>Agreement</th><th>Identify</th><th>Learn</th><th>Implement and improve</th></tr><tr><td>The relationship and arrangements (this page)</td><td>Classroom evidence and a goal for students</td><td>Explanation, modelling, rehearsal and feedback</td><td>Use it in class, review and refine with support</td></tr></table>
+ ${(a.reviews||[]).length?`<h2>Reviews</h2><table><tr><th>Date</th><th>Decision</th><th>Notes</th></tr>${a.reviews.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.decision)}</td><td>${esc(r.note)}</td></tr>`).join("")}</table>`:""}
+ <h2>Signed</h2><table><tr><th style="width:50%">Teacher</th><th>Coach</th></tr><tr><td style="height:40px"></td><td></td></tr></table></div>`;
+}
+/* nudges shown on the observation screen */
+function alignNudges(){
+ if(!(D.teacher||"").trim())return "";
+ const a=agreementFor(D.teacher),out=[];
+ if(!a)out.push(`<div class="anudge"><span>No coaching agreement with <b>${esc(D.teacher)}</b> yet.</span><button class="btn alt sm" data-act="agreeopen">Set it up</button></div>`);
+ const pc=D.prev?saved.find(s=>s.id===D.prev):null;
+ if(pc&&pc.date&&D.date){const gap=daysBetween(pc.date,D.date),w=cycleWeeks(D.teacher);
+  if(gap>=0&&gap<w*7*0.7)out.push(`<div class="anudge warnish"><span>The last cycle was <b>${gap} day${gap===1?"":"s"}</b> ago and the cycle length is <b>${w} week${w>1?"s":""}</b>. Cycles that come too often leave too little time to practise.</span></div>`)}
+ if(a){const n=cycleNo(D),done=(a.reviews||[]).length;if(n>=(+a.review||3)+1&&!done)out.push(`<div class="anudge"><span>This is cycle ${n} – time for the agreed review of the coaching relationship.</span><button class="btn alt sm" data-act="agreeopen">Review now</button></div>`)}
+ return out.join("");
+}
+
+/* ---------- evidence types (Identify) ---------- */
+function evidenceHTML(){
+ const ev=D.evidence||["live"];
+ return `<div class="card evcard"><div class="row"><h3 style="margin:0">Evidence for this cycle</h3><span class="small muted">choose all that apply</span></div>
+ <div class="evchips">${EVIDENCE.map(([k,l])=>`<button class="evchip ${ev.includes(k)?"on":""}" data-ev="${k}">${ev.includes(k)?"✓ ":""}${l}</button>`).join("")}</div>
+ ${ev.some(k=>k!=="live")?`<label class="f" style="margin-top:8px">${ev.includes("work")?"Student work":""}${ev.includes("work")&&(ev.includes("data")||ev.includes("video"))?", ":""}${ev.includes("data")?"data":""}${ev.includes("data")&&ev.includes("video")?" and ":""}${ev.includes("video")?"video":""} – what does it show?</label><textarea class="t" data-f="evNotes" placeholder="e.g. 8 of 24 exit tickets showed the misconception; in the video, the same 5 students answered">${esc(D.evNotes||"")}</textarea>`:""}</div>`;
+}
+
+/* ---------- key-ingredients checklist ---------- */
+const comps=id=>(T[id]&&T[id].look)||[];
+function embFor(teacher,id,exceptId){
+ const L=saved.filter(s=>akey(s.teacher)===akey(teacher)&&s.id!==exceptId&&(s.plans||{})[id]&&Array.isArray(s.plans[id].emb)).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+ return L.length?L[0].plans[id].emb.slice():[];
+}
+function rehFeedback(id,p){
+ const c=comps(id),emb=p.emb||[],r=p.reh||{};const live=c.map((x,i)=>i).filter(i=>!emb.includes(i));
+ const used=live.filter(i=>r[i]),miss=live.filter(i=>!r[i]);
+ if(!used.length)return "";
+ return `You used ${used.map(i=>i+1).join(", ").replace(/, (\d+)$/," and $1")}.${miss.length?` Next, try ${miss[0]+1}: ${esc(c[miss[0]])}.`:" Every component was there."}`;
+}
+function rehChecklistHTML(id,p){
+ const c=comps(id);if(!c.length)return "";
+ const emb=p.emb||[],r=p.reh||{},fb=rehFeedback(id,p);
+ return `<div class="ckl"><div class="small muted" style="margin:8px 0 4px">Key ingredients – tick what you saw in the rehearsal</div>
+ ${c.map((x,i)=>emb.includes(i)?`<div class="ck emb"><span class="ckb">✓</span><span class="ckt">${i+1}. ${esc(x)}</span><button class="btn ghost sm" data-emb="${id}|${i}" title="Track this again">embedded ↺</button></div>`
+  :`<div class="ck ${r[i]?"on":""}"><button class="ckb" data-reh="${id}|${i}" aria-label="Seen in rehearsal">${r[i]?"✓":""}</button><span class="ckt">${i+1}. ${esc(x)}</span><button class="btn ghost sm" data-emb="${id}|${i}" title="Mark as embedded – no longer tracked">embedded?</button></div>`).join("")}
+ ${fb?`<div class="ckfb">${fb}</div>`:""}</div>`;
+}
+/* follow-up observation: descriptive record of each component */
+const CK_STATES=[["seen","Seen"],["partly","Partly"],["not","Not seen yet"]];
+function obsChecklistHTML(){
+ const pc=D.prev?saved.find(s=>s.id===D.prev):null;if(!pc)return "";
+ const ids=(pc.chosen||[]).filter(id=>T[id]&&comps(id).length);if(!ids.length)return "";
+ D.check=D.check||{};
+ return ids.map(id=>{const emb=((pc.plans||{})[id]||{}).emb||[],ck=D.check[id]||{};
+  return `<div class="card ckcard"><div class="row"><h3 style="margin:0">Checklist – ${esc(T[id].n)}</h3><span class="small muted">describe what happened, not whether it was good</span></div>
+  ${comps(id).map((x,i)=>emb.includes(i)?"":`<div class="ckrow"><span class="ckt">${i+1}. ${esc(x)}</span><span class="ckseg">${CK_STATES.map(([k,l])=>`<button class="${ck[i]===k?"on "+k:""}" data-ck="${id}|${i}|${k}">${l}</button>`).join("")}</span></div>`).join("")}
+  ${emb.length?`<div class="small muted" style="margin-top:6px">${emb.length} component${emb.length>1?"s":""} embedded – not tracked.</div>`:""}</div>`}).join("");
+}
+function checklistPrint(d){
+ const ids=Object.keys(d.check||{}).filter(id=>T[id]);if(!ids.length)return "";
+ return `<h2>Checklist – follow-up observation</h2><table><tr><th style="width:70%">Component</th><th>What we saw</th></tr>${ids.flatMap(id=>comps(id).map((x,i)=>d.check[id][i]?`<tr><td><b>${esc(T[id].n)}</b> – ${esc(x)}</td><td>${esc((CK_STATES.find(s=>s[0]===d.check[id][i])||["",""])[1])}</td></tr>`:"")).join("")}</table>`;
+}
+function selfReviewPrint(d){
+ const ids=(d.chosen||[]).filter(id=>T[id]&&comps(id).length);if(!ids.length)return "";
+ return `<h2>My self-review checklist</h2><p class="meta">Use it after a lesson or while watching a video of your teaching. Tick what happened – it’s a noticing tool, not a score.</p>${ids.map(id=>{const emb=((d.plans||{})[id]||{}).emb||[];return `<table style="margin-top:4px"><tr><th>${esc(T[id].n)}</th><th style="width:12%">Lesson 1</th><th style="width:12%">Lesson 2</th><th style="width:12%">Lesson 3</th></tr>${comps(id).map((x,i)=>emb.includes(i)?"":`<tr><td>${esc(x)}</td><td style="text-align:center">☐</td><td style="text-align:center">☐</td><td style="text-align:center">☐</td></tr>`).join("")}</table>`}).join("")}`;
+}
+
+/* ---------- relational prompts ---------- */
+const MOVES=[["Listening","Pause. Paraphrase: “So what I’m hearing is…”","“Tell me more about…”"],["Questioning","“What did you notice when…?”","“What were students doing while…?”"],["Clarifying","“When you say they were off task, what did that look like?”","“Which part of the lesson do you mean?”"],["Prompting","“What might you try if…?”","“What would it look like if every student…?”"],["Directing back to the evidence","“Let’s look at the tallies around minute 12…”","“The roster shows how many responded – what do you make of that?”"]];
+function movesHTML(){
+ const d=+D.direction||3;
+ return `<details class="moves"><summary>Coaching moves – question stems</summary><div class="mgrid">${MOVES.map(m=>`<div><b>${m[0]}</b><div class="small">${m[1]}</div><div class="small">${m[2]}</div></div>`).join("")}</div>
+ <div class="row small" style="margin-top:8px"><span>Facilitative</span><input type="range" min="1" max="5" step="1" data-f="direction" value="${d}" style="flex:1;max-width:260px" aria-label="Level of direction"><span>Directive</span><span class="muted">– adapt the level of direction to the teacher’s needs and goals</span></div></details>`;
+}
+
+/* ---------- goal: student change + priority link ---------- */
+function priorityHTML(){
+ if(!curGoal())return "";
+ const a=agreementFor(D.teacher),f=focusTech(),opts=[a&&a.priority,f?"School focus: "+T[f].n:""].filter(Boolean);
+ return `<div class="card" style="margin-top:12px"><label class="f">Link to the school priority or professional learning</label>
+ <input class="t" data-f="priority" value="${esc(D.priority||"")}" placeholder="e.g. Term 1 PL – checking for understanding">
+ ${opts.length?`<div class="row" style="gap:6px;margin-top:6px">${opts.map(o=>`<button class="btn alt sm" data-prio="${esc(o)}">${esc(o)}</button>`).join("")}</div>`:""}</div>`;
+}
+
+/* ---------- coach reflection (finish) ---------- */
+function coachRefHTML(){
+ const r=D.coachRef||{};
+ return `<details class="coachref"><summary>Coach reflection – just for you (optional)</summary>
+ <label class="f">How directive was the conversation?</label><div class="row small"><span>Facilitative</span><input type="range" min="1" max="5" step="1" id="crDir" value="${+D.direction||3}" style="flex:1"><span>Directive</span></div>
+ <label class="f" style="margin-top:8px">What worked in the conversation?</label><textarea class="t" id="crWorked">${esc(r.worked||"")}</textarea>
+ <label class="f" style="margin-top:8px">What would you do differently?</label><textarea class="t" id="crDiff">${esc(r.diff||"")}</textarea>
+ <p class="small muted" style="margin:6px 0 0">Saved with the cycle in this browser. It isn’t included in the teacher’s documents.</p></details>`;
+}
+
+/* ---------- staff feedback page (term report) ---------- */
+function staffFeedbackHTML(L,WL){
+ const S=walkSummary(WL),work=[],next=[];if(WL.length<3)S.seenPct=[];
+ S.seenPct.filter(r=>r[1]>=50).slice(0,3).forEach(([k,v])=>work.push(`${k} was seen in ${v}% of learning walk visits.`));
+ const sec={};L.forEach(s=>(s.followups||[]).forEach(f=>Object.entries(f.ratings||{}).forEach(([id,r])=>{if(r.level==="secure"&&T[id])sec[id]=(sec[id]||0)+1})));
+ Object.entries(sec).sort((a,b)=>b[1]-a[1]).slice(0,2).forEach(([id,n])=>work.push(`${T[id].n} is becoming secure in classrooms (${n} follow-up${n>1?"s":""}).`));
+ S.seenPct.filter(r=>r[1]<30&&/whiteboard|everybody|turn and talk|check|signal|choral/i.test(r[0])).slice(0,3).forEach(([k,v])=>next.push(v?`${k} was seen in ${v}% of visits – a chance to build it in.`:`${k} wasn’t seen on learning walks – a chance to build it in.`));
+ const f=focusTech();if(f){const fv=WL.filter(v=>v.focus===f);(T[f].look||[]).map(l=>[l,fv.filter(v=>(v.lf||{})[l]).length]).filter(x=>fv.length&&x[1]/fv.length<0.4).slice(0,2).forEach(([l])=>next.push(`School focus (${T[f].n}): “${l}” was seen less often.`))}
+ if(!work.length&&!next.length)return "";
+ return `<div class="page">${head("Feedback for all staff",focusTerm()||rangeLabel())}
+ <p>A whole-school summary from coaching and learning walks. It describes patterns across classrooms – it isn’t about any one teacher.</p>
+ <h2>What’s working</h2>${work.length?`<ul>${work.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:`<div class="lines"><div class='l'></div><div class='l'></div></div>`}
+ <h2>Next steps</h2>${next.length?`<ul>${next.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:`<div class="lines"><div class='l'></div><div class='l'></div></div>`}
+ <h2>Our focus for the coming weeks</h2><div class="lines">${"<div class='l'></div>".repeat(3)}</div></div>`;
+}
+
+/* ---------- events ---------- */
+function bindAlign(all){
+ all("[data-stage]",b=>b.onclick=()=>{const k=b.dataset.stage;
+  if(k==="agree"){if(!(D.teacher||"").trim()){ctxOpen=true;rerenderKeep();toast("Add the teacher’s name first.");return}agreeT=D.teacher;setView("agree");return}
+  if(view!=="debrief")setView("debrief");
+  if(k==="identify"){step=D.prev&&step===0?1:(step===5?4:step);render()}
+  else if(k==="learn"){step=5;render()}
+  else if(k==="impl"){if(D.prev){step=0;render()}else toast("After this cycle the teacher uses the practice in class. The follow-up visit reviews and refines it – start it from Teachers › Start next cycle.",6000)}});
+ all("[data-ag]",el=>{const f=()=>{const t=agreeT||D.teacher;const a=agreements[akey(t)]||(agreements[akey(t)]=agreeBlank(t));const k=el.dataset.ag;
+  if(k.startsWith("items."))a.items[k.slice(6)]=el.checked;else a[k]=el.type==="number"?+el.value:el.value;persistAgreements()};el.oninput=f;el.onchange=f});
+ all("[data-ev]",b=>b.onclick=()=>{const k=b.dataset.ev;D.evidence=D.evidence||["live"];D.evidence=D.evidence.includes(k)?D.evidence.filter(x=>x!==k):D.evidence.concat(k);saveDraft();rerenderKeep()});
+ all("[data-reh]",b=>b.onclick=()=>{const [id,i]=b.dataset.reh.split("|");const p=D.plans[id];p.reh=p.reh||{};p.reh[i]=!p.reh[i];if(!p.reh[i])delete p.reh[i];if(Object.keys(p.reh).length)p.rehearsed=true;saveDraft();rerenderKeep()});
+ all("[data-emb]",b=>b.onclick=()=>{const [id,s]=b.dataset.emb.split("|"),i=+s;const p=D.plans[id];p.emb=p.emb||[];p.emb=p.emb.includes(i)?p.emb.filter(x=>x!==i):p.emb.concat(i);saveDraft();rerenderKeep()});
+ all("[data-ck]",b=>b.onclick=()=>{const [id,i,k]=b.dataset.ck.split("|");D.check=D.check||{};D.check[id]=D.check[id]||{};D.check[id][i]=D.check[id][i]===k?undefined:k;if(!D.check[id][i])delete D.check[id][i];saveDraft();rerenderKeep()});
+ all("[data-prio]",b=>b.onclick=()=>{D.priority=b.dataset.prio;saveDraft();rerenderKeep()});
+ const at=$("#agTeacher");if(at){at.focus();at.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();actAlign("agreeteacher")}}}
+ const cw=$("#cycleWeeks");if(cw)cw.oninput=()=>{settings.cycleWeeks=Math.max(1,+cw.value||3);persist("settings")};
+}
+function actAlign(x){
+ if(x==="agreeopen"){agreeT=D.teacher;setView("agree");return true}
+ if(x==="agreeteacher"){const n=($("#agTeacher").value||"").trim();if(!n){toast("Enter the teacher’s name first.");return true}
+  D.teacher=n;const a=agreementFor(n);if(a&&!D.coach)D.coach=a.coach||"";if(a&&a.model)D.model=a.model;ctxOpen=false;saveDraft();agreeT=n;
+  if(a){toast(`Agreement with ${esc(n)} is in place – on to Identify.`);step=0;setView("debrief")}else setView("agree");return true}
+ if(x==="agreeback"){if(!agreeT&&!D.teacher){setView("home");return true}setView(D.teacher&&akey(D.teacher)===akey(agreeT)?"debrief":"saved");return true}
+ if(x==="agreesave"){const t=agreeT||D.teacher;const isNew=!agreements[akey(t)];if(isNew){agreements[akey(t)]=agreeBlank(t);persistAgreements()}const a=agreements[akey(t)];
+  if(akey(D.teacher)===akey(t)){if(!D.coach)D.coach=a.coach||"";if(a.model&&(!D.model||D.model==="one"))D.model=a.model;saveDraft();if(isNew)toast("Coaching agreement saved.");step=0;setView("debrief")}else{toast("Coaching agreement saved.");setView("saved")}return true}
+ if(x==="agreedoc"){const t=agreeT||D.teacher;if(!agreements[akey(t)]){agreements[akey(t)]=agreeBlank(t);persistAgreements()}downloadDocx(`${today()} ${cleanName(t)} – coaching agreement.docx`,agreeSheet(t),`${t} – coaching agreement`).then(ok=>ok&&toast("Agreement downloaded as a Word document.",4000));return true}
+ if(x==="addreview"){const t=agreeT||D.teacher,a=agreements[akey(t)];if(!a)return true;a.reviews=a.reviews||[];a.reviews.push({date:today(),decision:$("#rvDec").value,note:$("#rvNote").value});persistAgreements();rerenderKeep();toast("Review recorded.");return true}
+ return false;
+}
+
+/* =====================================================================
    SHAREPOINT SAVING (synced folder via File System Access API + web link)
    ===================================================================== */
 const fsSupported=()=>{try{return typeof window.showDirectoryPicker==="function"&&window.self===window.top}catch(e){return false}};
@@ -2063,9 +2296,9 @@ function spTeacherLink(teacher){
   base=base.replace(/\/+$/,"");return name?base+"/"+encodeURIComponent(name):base;
  }catch(e){return ""}
 }
-function recordFilename(d){return `${d.date||new Date().toISOString().slice(0,10)} ${cleanName(d.teacher)||"Teacher"} – Blueprint record.html`}
-function cardFilename(d){return `${d.date||new Date().toISOString().slice(0,10)} ${cleanName(d.teacher)||"Teacher"} – action card.html`}
-function convFilename(d){return `${d.date||new Date().toISOString().slice(0,10)} ${cleanName(d.teacher)||"Teacher"} – coaching conversation.html`}
+function recordFilename(d){return `${d.date||today()} ${cleanName(d.teacher)||"Teacher"} – Blueprint record.html`}
+function cardFilename(d){return `${d.date||today()} ${cleanName(d.teacher)||"Teacher"} – action card.html`}
+function convFilename(d){return `${d.date||today()} ${cleanName(d.teacher)||"Teacher"} – coaching conversation.html`}
 async function saveToSharePoint(d){
  if(!d.teacher||!d.teacher.trim()){showModal(`<h2>Add the teacher’s name first</h2><p>The teacher’s name is used for the SharePoint folder. Add it in step 1 (Context).</p><div class="row"><button class="btn hi" data-mclose data-goStep1>Go to step 1</button><button class="btn alt" data-mclose>Cancel</button></div>`);
   const b=$("#modal [data-goStep1]");if(b)b.addEventListener("click",()=>{step=1;setView("debrief")});return}
@@ -2109,9 +2342,9 @@ $("#modal").addEventListener("click",e=>{if(e.target.id==="modal")hideModal()});
 /* =====================================================================
    BACKUP / RESTORE
    ===================================================================== */
-function backupData(){return {app:"coaching-debrief-playbook",version:APP_VERSION,exported:new Date().toISOString(),custom,edits,videos,moments,saved,settings,nuances,walks}}
+function backupData(){return {app:"coaching-debrief-playbook",version:APP_VERSION,exported:new Date().toISOString(),custom,edits,videos,moments,saved,settings,nuances,walks,agreements}}
 async function doBackup(){
- const name=`Blueprint backup ${new Date().toISOString().slice(0,10)}.json`;
+ const name=`Blueprint backup ${today()}.json`;
  const ok=await download(name,JSON.stringify(backupData(),null,1),"application/json");
  if(ok!==false){LS.set(KEYS.backup,Date.now());render();toast("Backup file downloaded. Keep it in your SharePoint or OneDrive coaching folder.",6000)}
 }
@@ -2125,12 +2358,12 @@ async function restore(file){
  <p class="small"><b>Merge</b> adds what’s in the file and keeps what’s here (the file wins where the same item exists). <b>Replace</b> makes this browser match the file exactly.</p>
  <div class="row"><button class="btn hi" data-m="merge">Merge</button><button class="btn alt" data-m="replace">Replace everything</button><button class="btn ghost" data-mclose>Cancel</button></div>`);
  const apply=mode=>{
-  if(mode==="replace"){custom=data.custom||{};edits=data.edits||{};videos=data.videos||{};moments=data.moments||{};nuances=data.nuances||{};saved=data.saved||[];walks=data.walks||[];settings=Object.assign({spUrl:"",school:"",playbook:[],timerMins:20},data.settings||{})}
+  if(mode==="replace"){custom=data.custom||{};edits=data.edits||{};videos=data.videos||{};moments=data.moments||{};nuances=data.nuances||{};saved=data.saved||[];walks=data.walks||[];agreements=data.agreements||{};settings=Object.assign({spUrl:"",school:"",playbook:[],timerMins:20},data.settings||{})}
   else{custom=Object.assign({},custom,data.custom||{});edits=Object.assign({},edits,data.edits||{});videos=Object.assign({},videos,data.videos||{});moments=Object.assign({},moments,data.moments||{});nuances=Object.assign({},nuances,data.nuances||{});
    const ids=new Map(saved.map((s,i)=>[s.id,i]));(data.saved||[]).forEach(s=>{if(ids.has(s.id))saved[ids.get(s.id)]=s;else saved.push(s)});
-   const wids=new Map(walks.map((v,i)=>[v.id,i]));(data.walks||[]).forEach(v=>{if(wids.has(v.id))walks[wids.get(v.id)]=v;else walks.push(v)});
+   const wids=new Map(walks.map((v,i)=>[v.id,i]));(data.walks||[]).forEach(v=>{if(wids.has(v.id))walks[wids.get(v.id)]=v;else walks.push(v)});Object.assign(agreements,data.agreements||{});
    const ds=data.settings||{};if(ds.spUrl&&!settings.spUrl)settings.spUrl=ds.spUrl;if(ds.school&&!settings.school)settings.school=ds.school;if(ds.schoolLogo&&!settings.schoolLogo)settings.schoolLogo=ds.schoolLogo;if(ds.theme&&!settings.theme)settings.theme=ds.theme;settings.playbook=[...new Set((settings.playbook||[]).concat(ds.playbook||[]))]}
-  ["custom","edits","videos","moments","saved","settings","nuance"].forEach(persist);LS.set("cdp_walks",walks);LS.set(KEYS.backup,Date.now());rebuild();applyBranding();hideModal();render();toast("Backup restored.");
+  ["custom","edits","videos","moments","saved","settings","nuance"].forEach(persist);LS.set("cdp_walks",walks);LS.set("cdp_agreements",agreements);LS.set(KEYS.backup,Date.now());rebuild();applyBranding();hideModal();render();toast("Backup restored.");
  };
  $("#modal [data-m=merge]").onclick=()=>apply("merge");$("#modal [data-m=replace]").onclick=()=>apply("replace");
 }
@@ -2149,7 +2382,7 @@ async function importConversation(file){
    PRINT SHEETS
    ===================================================================== */
 const vlink=(v,label)=>{const w=watchUrl(v);return `<a class="vlink" href="${esc(w)}">${label?esc(label)+" ":""}${esc(w)}</a>`};
-const nuP=t=>(t.nu||[]).length?`<div class="nup"><b>Our nuance</b><ul>${t.nu.map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div>`:"";
+const nuP=t=>(t.nu||[]).length?`<div class="nup"><b>Where you can adapt (our nuance)</b><ul>${t.nu.map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div>`:"";
 const head=(title,sub)=>`<div class="hd"><div class="hl"><img src="${LOGO}" alt=""><div><div class="sub">${esc(sub)}</div><h1>${esc(title)}</h1></div></div><div class="hr"><div class="sub">Blueprint${settings.school?" · "+esc(settings.school):""}</div>${settings.schoolLogo?`<img class="sl" src="${settings.schoolLogo}" alt="">`:""}</div></div><div class="strip"></div>`;
 function techSheet(id,ctx){const t=T[id],m=macroById(t.m),el=elById(m.el),p=(ctx&&ctx.plans&&ctx.plans[id])||{};const v=videos[id];
  const lines=(q,n)=>`<div class="lines"><div class="q">${q}</div>${"<div class='l'></div>".repeat(n)}</div>`;
@@ -2159,7 +2392,7 @@ function techSheet(id,ctx){const t=T[id],m=macroById(t.m),el=elById(m.el),p=(ctx
  <table><tr><th></th><th>Step</th><th class="rate">My confidence<br>1 · 2 · 3 · 4</th></tr>
  ${(t.steps||[]).map((s,i)=>`<tr><td class="num">${i+1}</td><td><b>${esc(s[0])}.</b> ${esc(s[1])}</td><td class="rate">☐ ☐ ☐ ☐</td></tr>`).join("")}</table>
  ${nuP(t)}${t.w?`<p class="meta"><b>Why it works:</b> ${esc(t.w)}</p>`:""}
- <div class="two" style="margin-top:6px"><div><h2>Look-fors</h2><ul>${(t.look||[]).map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div><div><h2>Pitfalls to avoid</h2><ul>${(t.pit||[]).map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div></div>
+ <div class="two" style="margin-top:6px"><div><h2>Key ingredients</h2><ul>${(t.look||[]).map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div><div><h2>Pitfalls to avoid</h2><ul>${(t.pit||[]).map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div></div>
  ${v?`<p class="meta" style="margin-top:6px"><b>Practice video:</b> ${vlink(v)}${(moments[id]||[]).length?" · Moments: "+moments[id].slice().sort((a,b)=>a.s-b.s).map(x=>esc(x.t)+" "+esc(x.note)).join("; "):""}</p>`:""}
  <h2>My action step</h2>
  <div class="two"><div class="box"><b>I will:</b> ${esc(p.action||"")}</div><div class="box"><b>When:</b> ${esc(p.when||"")}<br><b>Follow-up:</b> ${esc(p.follow||"")}${ctx&&ctx.teacher?`<br><b>Teacher:</b> ${esc(ctx.teacher)}`:""}</div></div>
@@ -2178,18 +2411,22 @@ function planSheet(d){
  return `<div class="page">${head("Coaching conversation",(d.date||"")+(d.cls?" · "+d.cls:""))}
  <table><tr><th style="width:18%">Teacher</th><td>${esc(d.teacher)}</td><th style="width:14%">Coach</th><td>${esc(d.coach)}</td></tr>
  <tr><th>Lesson</th><td colspan="3">${esc(d.focus)}</td></tr>
+ ${d.model&&d.model!=="one"?`<tr><th>Coaching model</th><td colspan="3">${esc(modelName(d.model))}${d.members?": "+esc(d.members):""}</td></tr>`:""}
+ <tr><th>Evidence</th><td colspan="3">${esc((d.evidence||["live"]).map(k=>(EVIDENCE.find(e=>e[0]===k)||["",k])[1]).join(", "))}${d.evNotes?`<br>${esc(d.evNotes).replace(/\n/g,"<br>")}`:""}</td></tr>
  ${(d.obsFocus||[]).length?`<tr><th>Observation focus</th><td colspan="3">${d.obsFocus.map(f=>esc(focusLabel(f))+(f.type==="goal"?` (${esc(macroById(probById(f.id).macro).n)})`:"")).join("; ")}</td></tr>`:""}</table>
  <h2>1. Appreciative noticing</h2>
  ${d.notice.filter(n=>(n.did||"").trim()||(n.effect||"").trim()).length?`<table><tr><th style="width:50%">What you did</th><th>The effect on students</th></tr>${d.notice.filter(n=>(n.did||"").trim()||(n.effect||"").trim()).map(n=>`<tr><td>${esc(n.did).replace(/\n/g,"<br>")}</td><td>${esc(n.effect).replace(/\n/g,"<br>")}</td></tr>`).join("")}</table>`:`<div class="box"></div>`}
  <h2>2. Inviting reflection</h2>
  <table><tr><th style="width:38%">What do you think went well?</th><td>${esc(d.reflect.well).replace(/\n/g,"<br>")}</td></tr><tr><th>What would you like to work on?</th><td>${esc(d.reflect.work).replace(/\n/g,"<br>")}</td></tr></table>
  <h2>3. Canvassing possible goals</h2>
- ${g?`<div class="box"><b>Agreed goal:</b> ${esc(g.text)}${g.macro?` <span class="meta">(${esc(macroById(g.macro).n)})</span>`:""}</div>`:""}
+ ${g?`<div class="box"><b>Agreed goal:</b> ${esc(g.text)}${g.macro?` <span class="meta">(${esc(macroById(g.macro).n)})</span>`:""}${d.priority?`<br><span class="meta">Links to: ${esc(d.priority)}</span>`:""}</div>`:""}
  ${others.length?`<p class="meta" style="margin-top:4px"><b>Other possible goals:</b> ${others.map(x=>esc(x.text)).join(" · ")}</p>`:""}
  ${probs.length?`<table style="margin-top:4px"><tr><th>Focus area</th><th>Observation</th></tr>${probs.map(p=>`<tr><td>${esc(macroById(p.macro).n)}</td><td>${esc(p.t)}</td></tr>`).join("")}</table>`:""}
- <h2>4 &amp; 5. Technique, model / show and plan</h2>
+ <h2>4 &amp; 5. Technique – explain, model, rehearse and plan</h2>
  <table><tr><th>Technique</th><th>Action step</th><th>Look-for</th><th>When / follow-up</th><th>Rehearsed</th></tr>
  ${d.chosen.filter(id=>T[id]).map(id=>{const p=d.plans[id]||{};return `<tr><td><b>${esc(T[id].n)}</b><br><span class="meta">${esc(macroById(T[id].m).n)}</span></td><td>${esc(p.action)}</td><td>${esc(p.look)}</td><td>${esc(p.when)}<br>${esc(p.follow)}</td><td style="text-align:center">${p.rehearsed?"✓":"☐"}${p.rnote?`<div class="meta" style="text-align:left">${esc(p.rnote)}</div>`:""}</td></tr>`}).join("")}</table>
+ ${d.chosen.filter(id=>T[id]&&(d.plans[id]||{}).modelType).length?`<p class="meta">Model used: ${d.chosen.filter(id=>T[id]&&(d.plans[id]||{}).modelType).map(id=>esc(T[id].n)+" – "+esc(d.plans[id].modelType)).join("; ")}</p>`:""}
+ ${checklistPrint(d)}
  ${d.obs?obsSummaryPrint(d.obs):""}
  ${growthPrint(d)}
  ${(d.followups||[]).length?`<h2>Follow-ups</h2><table><tr><th>Date</th><th>Technique</th><th>Level</th><th>Evidence</th></tr>${d.followups.flatMap(f=>Object.entries(f.ratings||{}).map(([k,v])=>`<tr><td>${esc(f.date)}</td><td>${esc(T[k]?T[k].n:k)}</td><td>${esc(levelName(v.level))}</td><td>${esc(v.note||"")}${f.note?" – "+esc(f.note):""}</td></tr>`)).join("")}</table>`:""}
@@ -2236,7 +2473,7 @@ function bookletSheet(){
   return `<div class="page">${head(t.n,el.n+" › "+m.n)}<p><b>Purpose:</b> ${esc(t.p)}</p>
   <h2>The play</h2><table>${(t.steps||[]).map((s,i)=>`<tr><td class="num">${i+1}</td><td><b>${esc(s[0])}.</b> ${esc(s[1])}</td></tr>`).join("")}</table>
   ${nuP(t)}${t.w?`<p class="meta"><b>Why it works:</b> ${esc(t.w)}</p>`:""}
-  <div class="two" style="margin-top:6px"><div><h2>Look-fors</h2><ul>${(t.look||[]).map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div><div><h2>Pitfalls to avoid</h2><ul>${(t.pit||[]).map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div></div>
+  <div class="two" style="margin-top:6px"><div><h2>Key ingredients</h2><ul>${(t.look||[]).map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div><div><h2>Pitfalls to avoid</h2><ul>${(t.pit||[]).map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div></div>
   ${v?`<h2>See it in action</h2><p class="meta">${vlink(v)}${(moments[id]||[]).length?"<br>Moments: "+moments[id].slice().sort((a,b)=>a.s-b.s).map(x=>esc(x.t)+" "+esc(x.note)).join("; "):""}</p>`:""}
   <div class="foot">VTLM 2.0: ${esc(m.v)}<br>Guide: ${(MACRO_LINKS[m.id]||[]).map(k=>LINKS[k].u).join(" · ")}</div></div>`});
  return cover+toc+pages.join("");
@@ -2260,7 +2497,8 @@ function actionCardSheet(d){
   <table style="margin-top:6px">${(t.steps||[]).map((s,i)=>`<tr><td class="num">${i+1}</td><td><b>${esc(s[0])}.</b> ${esc(s[1])}</td></tr>`).join("")}</table>
   ${nuP(t)}<div class="two" style="margin-top:6px"><div class="box"><b>I’ll know it’s working when:</b> ${esc(p.look||(t.look||[])[0]||"")}</div><div class="box"><b>When:</b> ${esc(p.when||"")}<br><b>Follow-up visit:</b> ${esc(p.follow||"")}</div></div>
   ${v?`<p class="meta" style="margin-top:4px"><b>Watch:</b> ${vlink(v)}</p>`:""}`}).join("")}
- <h2>Notes</h2><div class="lines">${"<div class='l'></div>".repeat(5)}</div></div>`}
+ ${selfReviewPrint(d)}
+ <h2>Notes</h2><div class="lines">${"<div class='l'></div>".repeat(3)}</div></div>`}
 
 function summaryParts(d){d=norm(d);const g=(d.goals||[]).find(x=>x.id===d.goal);
  return {g,rows:d.chosen.filter(id=>T[id]).map(id=>{const p=d.plans[id]||{};return {t:T[id].n,action:p.action||"",when:p.when||"",look:p.look||(T[id].look||[])[0]||"",follow:p.follow||""}})}}
@@ -2386,19 +2624,19 @@ const DOCX=(()=>{
   return null}
  return {build,readData,zip};
 })();
-async function downloadDocx(filename,html,title,data){try{const blob=DOCX.build(html,title,data);return await download(filename,blob,"application/vnd.openxmlformats-officedocument.wordprocessingml.document")}catch(e){console.error(e);toast("Couldn’t make the Word file – "+(e.message||e));return false}}
+async function downloadDocx(filename,html,title,data){html=html.replace(/<\/div>\s*$/,"")+`<p class="meta" style="margin-top:10px">${NOT_PDP}</p></div>`;try{const blob=DOCX.build(html,title,data);return await download(filename,blob,"application/vnd.openxmlformats-officedocument.wordprocessingml.document")}catch(e){console.error(e);toast("Couldn’t make the Word file – "+(e.message||e));return false}}
 
 /* =====================================================================
    ROUTING + EVENTS
    ===================================================================== */
-const NAVOF={progress:"saved",home:"home",debrief:"debrief",library:"library",tech:"library",edit:"library",saved:"saved",more:"more",settings:"more",resources:"more",walk:"saved"};
+const NAVOF={progress:"saved",home:"home",debrief:"debrief",library:"library",tech:"library",edit:"library",saved:"saved",more:"more",settings:"more",resources:"more",walk:"saved",agree:"debrief"};
 function setView(v){if(v==="observe"){step=0;v="debrief"}if(v==="patterns"){teachTab="patterns";v="saved"}view=v;const nv=NAVOF[v]||"home";document.querySelectorAll("header nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===nv));render();window.scrollTo(0,0)}
 document.querySelectorAll("header nav button").forEach(b=>b.onclick=()=>{if(b.dataset.v==="saved")teachTab="teachers";setView(b.dataset.v)});
 document.querySelector("header .brand").onclick=()=>setView("home");
 if(!settings.helpSeen)setTimeout(showHelp,300);
 function render(){
  const a=$("#app"), y=window.scrollY;
- const V={home:homeHTML,debrief:debriefHTML,library:libraryHTML,tech:()=>T[curTech]?techHTML(curTech):libraryHTML(),edit:editHTML,saved:savedHTML,progress:progressHTML,settings:settingsHTML,more:moreHTML,resources:resourcesPage,walk:walkHTML};
+ const V={home:homeHTML,debrief:debriefHTML,library:libraryHTML,tech:()=>T[curTech]?techHTML(curTech):libraryHTML(),edit:editHTML,saved:savedHTML,progress:progressHTML,settings:settingsHTML,more:moreHTML,resources:resourcesPage,walk:walkHTML,agree:agreeHTML};
  a.innerHTML=(V[view]||homeHTML)();
  bind();
  if(view==="debrief"&&step===0)window.scrollTo(0,y);
@@ -2500,14 +2738,16 @@ function bind(){
  // patterns
  const pf=$("#pFrom"),pt=$("#pTo"),pn=$("#pNames");
  if(pf)pf.onchange=()=>{patFilter.from=pf.value;render()}; if(pt)pt.onchange=()=>{patFilter.to=pt.value;render()}; if(pn)pn.onchange=()=>{patFilter.names=pn.checked};
- bindMore(all);
+ bindMore(all);bindAlign(all);
+ all("[data-agreefor]",b=>b.onclick=()=>{agreeT=b.dataset.agreefor;setView("agree")});
  all("[data-act]",b=>b.onclick=()=>act(b.dataset.act));
 }
 async function act(x){
  if(actMore(x))return;
+ if(actAlign(x))return;
  if(x==="new"){act("newcycle");return}
  if(x==="resume"){setView("debrief")}
- if(x==="newcycle"||x==="newobs"){focusQ="";D=norm(blank());D.obs=blankObs();step=0;ctxOpen=true;noteDraft={text:"",type:"noticing",macro:""};obsUI={note:false,roster:false};goalQ="";goalArea="";showAllBets=false;DT={start:null,elapsed:0};LS.set(KEYS.draft,D);setView("debrief")}
+ if(x==="newcycle"||x==="newobs"){focusQ="";D=norm(blank());D.obs=blankObs();step=0;ctxOpen=true;noteDraft={text:"",type:"noticing",macro:""};obsUI={note:false,roster:false};goalQ="";goalArea="";showAllBets=false;DT={start:null,elapsed:0};LS.set(KEYS.draft,D);agreeT="";ctxOpen=false;setView("agree")}
  if(x==="help")showHelp();
  if(x==="rmlogo"){settings.schoolLogo="";persist("settings");applyBranding();rerenderKeep();toast("Logo removed.")}
  if(x==="rstheme"){settings.theme=null;persist("settings");applyBranding();rerenderKeep()}
