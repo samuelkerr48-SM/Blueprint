@@ -2134,7 +2134,7 @@ function alignNudges(){
  if(!a)out.push(`<div class="anudge"><span>No coaching agreement with <b>${esc(D.teacher)}</b> yet.</span><button class="btn alt sm" data-act="agreeopen">Set it up</button></div>`);
  const pc=D.prev?saved.find(s=>s.id===D.prev):null;
  if(pc&&pc.date&&D.date){const gap=daysBetween(pc.date,D.date),w=cycleWeeks(D.teacher);
-  if(gap>=0&&gap<w*7*0.7)out.push(`<div class="anudge warnish"><span>The last cycle was <b>${gap} day${gap===1?"":"s"}</b> ago and the cycle length is <b>${w} week${w>1?"s":""}</b>. Cycles that come too often leave too little time to practise.</span></div>`)}
+  if(gap>=0&&gap<w*7*0.6)out.push(`<div class="anudge warnish"><span>The last cycle was <b>${gap} day${gap===1?"":"s"}</b> ago and the cycle length is <b>${w} week${w>1?"s":""}</b>. Cycles that come too often leave too little time to practise.</span></div>`)}
  if(a){const n=cycleNo(D),done=(a.reviews||[]).length;if(n>=(+a.review||3)+1&&!done)out.push(`<div class="anudge"><span>This is cycle ${n} – time for the agreed review of the coaching relationship.</span><button class="btn alt sm" data-act="agreeopen">Review now</button></div>`)}
  return out.join("");
 }
@@ -2518,7 +2518,11 @@ async function copyText(txt){try{await navigator.clipboard.writeText(txt);return
    (no libraries: minimal OOXML + an uncompressed zip writer)
    ===================================================================== */
 const DOCX=(()=>{
- const PW=10206;const NAVY="012C5F",BLUE="2A6DB8",TINT="EEF5FC",LINE="B5D3F1",GREY="5A6878";
+ const PW=10206;let NAVY="012C5F",BLUE="2A6DB8",TINT="EEF5FC",LINE="B5D3F1",BAND=null;const GREY="5A6878";
+ const hx=c=>String(c||"").replace("#","").toUpperCase();
+ const mix=(c,w,p)=>{c=hx(c);const n=i=>parseInt(c.substr(i,2),16);return [0,2,4].map(i=>Math.round(n(i)*(1-p)+255*p).toString(16).padStart(2,"0")).join("").toUpperCase()};
+ function docTheme(){const t=(typeof settings!=="undefined"&&settings.theme)||{dark:"#012C5F",accent:"#2A6DB8"};
+  NAVY=hx(t.dark);BLUE=hx(t.accent);TINT=mix(t.accent,0,0.92);LINE=mix(t.accent,0,0.68);BAND=Array.isArray(t.band)&&t.band.length?[hx(t.dark)].concat(t.band.map(hx)):null}
  const xe=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
  const enc=new TextEncoder();
  // ---------- zip (store) ----------
@@ -2533,7 +2537,7 @@ const DOCX=(()=>{
   const cs=cen.reduce((a,b)=>a+b.length,0),e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cs,true);e.setUint32(16,off,true);
   return new Blob([...parts,...cen,new Uint8Array(e.buffer)],{type:type||"application/vnd.openxmlformats-officedocument.wordprocessingml.document"})}
  // ---------- builder ----------
- function build(html,title,data){
+ function build(html,title,data){docTheme();
   const doc=new DOMParser().parseFromString(`<div id="root">${html}</div>`,"text/html").getElementById("root");
   const rels=[],media=[];let rid=10,imgN=0;
   const addRel=(type,target,ext)=>{const id="rId"+(rid++);rels.push(`<Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/${type}" Target="${xe(target)}"${ext?' TargetMode="External"':""}/>`);return id};
@@ -2568,7 +2572,9 @@ const DOCX=(()=>{
     const tg=n.tagName.toLowerCase(),cl=n.classList;
     if(!BLOCK.test(tg)){buf+=inline({childNodes:[n]},ctx.f||{});continue}
     flush();
-    if(cl.contains("strip")){o+=para("",`<w:pBdr><w:bottom w:val="single" w:sz="18" w:color="${BLUE}"/></w:pBdr><w:spacing w:after="160"/>`);continue}
+    if(cl.contains("strip")){if(BAND){const w0=Math.round(PW*0.22),wr=Math.floor((PW-w0)/(BAND.length-1)),ws=BAND.map((c,i)=>i?wr:w0);
+      o+=`<w:tbl><w:tblPr><w:tblW w:w="${PW}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${ws.map(w=>`<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid><w:tr><w:trPr><w:trHeight w:val="90" w:hRule="exact"/></w:trPr>${BAND.map((c,i)=>`<w:tc><w:tcPr><w:tcW w:w="${ws[i]}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${c}"/></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/></w:pPr></w:p></w:tc>`).join("")}</w:tr></w:tbl>`+para("",'<w:spacing w:after="120"/>')}
+     else o+=para("",`<w:pBdr><w:bottom w:val="single" w:sz="18" w:color="${BLUE}"/></w:pBdr><w:spacing w:after="160"/>`);continue}
     if(cl.contains("hd")){const L=n.querySelector(".hl"),R=n.querySelector(".hr");
      const li=L.querySelector("img"),sub=L.querySelector(".sub"),h=L.querySelector("h1");
      const left=para(`${li?image(li.getAttribute("src"),46):""}`,"")+para(run(h?h.textContent:"",{b:1,c:NAVY,sz:36}),'<w:spacing w:after="0"/>')+para(run(sub?sub.textContent:"",{c:GREY,sz:18}),"");
