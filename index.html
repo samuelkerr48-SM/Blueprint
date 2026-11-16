@@ -43,7 +43,7 @@ p.lead{color:var(--muted);margin:0 0 18px;max-width:840px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .spacer{flex:1}
 .pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--b50);color:var(--navy);border:1px solid var(--b200)}
-.pill.plan{background:#f1f7fd;color:#2d5f93;border-color:var(--b200)}
+.pill.plan{background:var(--b50);color:var(--navy);border-color:var(--b200)}
 .pill.enab{background:var(--b50);color:var(--blue);border-color:var(--b200)}
 .pill.expl{background:#e7edf4;color:var(--navy);border-color:#c3d0de}
 .pill.supp{background:#e6eef7;color:var(--el-supp);border-color:#bcd0e6}
@@ -67,7 +67,7 @@ textarea.t{min-height:70px;resize:vertical}
 .vref{font-size:12px;color:var(--muted);margin-top:6px;border-top:1px dashed var(--line);padding-top:6px}
 .macro{background:#fff;border:2px solid var(--line);border-radius:10px;padding:14px;cursor:pointer;text-align:left;width:100%;position:relative}
 .macro:hover{border-color:var(--b300)}
-.macro.sel{border-color:var(--navy);background:#fbfdff;box-shadow:0 0 0 3px rgba(46,125,209,.15)}
+.macro.sel{border-color:var(--navy);background:var(--b50);box-shadow:0 0 0 3px var(--b100)}
 .macro.sel::after{content:"✓";position:absolute;top:10px;right:12px;background:var(--blue);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
 .macro h3{padding-right:26px}
 .macro .plays{font-size:12.5px;color:var(--muted);margin-top:8px}
@@ -234,8 +234,8 @@ header.top .brand{cursor:pointer}
 header.top nav button{padding:9px 16px;font-size:15px}
 .dash{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-top:18px}
 @media(max-width:760px){.dash{grid-template-columns:1fr}}
-.bigstart{background:var(--blue);color:#fff;border:0;border-radius:14px;padding:26px 24px;text-align:left;display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 18px rgba(42,109,184,.25)}
-.bigstart:hover{background:#245fa3}.bigstart .bs1{font-size:24px;font-weight:700}.bigstart .bs2{font-size:14px;opacity:.9}
+.bigstart{background:var(--blue);color:#fff;border:0;border-radius:14px;padding:26px 24px;text-align:left;display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 18px color-mix(in srgb,var(--blue) 25%,transparent);transition:background .12s,transform .08s,box-shadow .12s;cursor:pointer}
+.bigstart:hover{background:color-mix(in srgb,var(--blue) 82%,var(--navy))}.bigstart:active{background:var(--navy);transform:scale(.985);box-shadow:0 0 0 4px var(--b200)}.bigstart .bs1{font-size:24px;font-weight:700}.bigstart .bs2{font-size:14px;opacity:.9}
 .cont{border-left:6px solid var(--blue)}
 .duerow{display:flex;gap:10px;align-items:center;border-top:1px solid var(--line);padding:10px 0;flex-wrap:wrap}
 .overdue{color:#b00020;font-weight:700}
@@ -258,7 +258,7 @@ header.top nav button{padding:9px 16px;font-size:15px}
 .tabs button.on{background:var(--navy);color:#fff}
 .lgroup{margin-top:14px}.lgh{display:flex;gap:8px;align-items:center;margin-bottom:6px}.lgh .bar{width:5px;height:20px;border-radius:3px}
 .lrow{display:grid;grid-template-columns:minmax(180px,280px) 1fr auto 20px;gap:12px;align-items:center;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:6px;min-height:48px}
-.lrow:hover{border-color:var(--b300);background:#fbfdff}
+.lrow:hover{border-color:var(--b300);background:var(--b50)}
 .lrow .ln{font-weight:700;color:var(--navy)}.lrow .lp{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lrow .lgo{color:var(--blue);font-size:20px}
 @media(max-width:700px){.lrow{grid-template-columns:1fr 20px}.lrow .lp,.lrow .lb{display:none}}
 .helpsteps{list-style:none;padding:0;margin:14px 0}.helpsteps li{display:flex;gap:12px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line)}
@@ -393,7 +393,7 @@ table.mini td{border-bottom:1px solid var(--line);padding:6px 8px;vertical-align
 .stg b{display:block;font-size:13.5px;color:var(--navy)}.stg span{font-size:12px;color:var(--muted)}
 .stg.on{background:var(--navy);border-color:var(--navy)}.stg.on b,.stg.on span{color:#fff}
 .stg.done:not(.on) b::after{content:" ✓";color:var(--blue)}
-.anudge{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#F2F6FB;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:14px}
+.anudge{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--b50);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:14px}
 .anudge.warnish{background:#FFF7E8;border-color:#F3D9A4}
 .evcard{margin-bottom:12px}.evchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .evchip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer;color:var(--ink)}
@@ -415,6 +415,15 @@ header.top nav button.navhome{display:inline-flex;align-items:center;gap:6px}
 @media(max-width:520px){header.top nav button.navhome span{display:none}}
 .brand{cursor:pointer}
 
+.navhelp{margin-left:6px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;font-weight:700;font-size:16px;cursor:pointer;flex:none}
+.navhelp:hover{background:rgba(255,255,255,.15)}
+button:focus-visible,.btn:focus-visible,a:focus-visible{outline:3px solid var(--b300);outline-offset:2px}
+.stepper .s:active,.stg:active,.tile:active,.tbtn:active,.evchip:active{transform:scale(.985)}
+.stg.on{box-shadow:inset 0 -4px 0 var(--blue)}
+.lockbox{max-width:360px;margin:60px auto;text-align:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 24px}
+.lockic{font-size:34px}.pinin{text-align:center;font-size:22px;letter-spacing:6px;max-width:200px;margin:0 auto;display:block}
+.reccode{font-family:Consolas,monospace;font-size:26px;letter-spacing:3px;text-align:center;background:var(--b50);border:1px dashed var(--b300);border-radius:10px;padding:14px;color:var(--navy)}
+
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-180.png">
@@ -432,6 +441,7 @@ header.top nav button.navhome{display:inline-flex;align-items:center;gap:6px}
     <button data-v="saved">Teachers</button>
     <button data-v="more">More</button>
   </nav>
+  <button class="navhelp" data-act="help" aria-label="Help for this screen" title="Help for this screen">?</button>
 </header>
 <div class="band"></div>
 <main id="app"></main>
@@ -912,7 +922,7 @@ function followupModal(id){
  mb.querySelector("[data-m=observe]").onclick=()=>{hideModal();nextCycle(c)};
 }
 function nextCycle(c){
- D=norm(blank());D.teacher=c.teacher;D.coach=c.coach;D.cls=c.cls;D.prev=c.id;D.obs=blankObs();step=0;ctxOpen=false;{const pg=(c.goals||[]).find(x=>x.id===c.goal);if(pg)D.obsFocus=[pg.pid?{type:"goal",id:pg.pid}:pg.macro?{type:"macro",id:pg.macro}:null].filter(Boolean)}saveDraft();if(agreementFor(D.teacher)){setView("debrief")}else{agreeT=D.teacher;setView("agree");toast(`Set up the coaching agreement with ${esc(D.teacher)} first.`,4000)}
+ D=norm(blank());D.teacher=c.teacher;D.coach=c.coach;D.cls=c.cls;D.prev=c.id;D.obs=blankObs();step=0;ctxOpen=false;{const pg=(c.goals||[]).find(x=>x.id===c.goal);if(pg)D.obsFocus=[pg.pid?{type:"goal",id:pg.pid}:pg.macro?{type:"macro",id:pg.macro}:null].filter(Boolean)}saveDraft();if(isArchived(D.teacher))setArchived(D.teacher,false);if(agreementFor(D.teacher)){setView("debrief")}else{agreeT=D.teacher;setView("agree");toast(`Set up the coaching agreement with ${esc(D.teacher)} first.`,4000)}
  toast(`New cycle started for ${esc(c.teacher)}. Last cycle’s action steps are shown for reference.`,5000);
 }
 
@@ -936,7 +946,7 @@ function inProgress(){return !!(D.teacher||D.notice.some(n=>(n.did||"").trim())|
 function homeHTML(){
  const due=followupsDue(), td=today();
  const g=curGoal();
- return `${backupNag()}<div class="hero"><img src="${LOGO}" alt=""><div><h1>Blueprint</h1><div style="font-weight:700;color:var(--blue)">Instructional coaching: observe · debrief · practise · follow up</div></div></div>
+ return `${backupNag()}<div class="hero"><img src="${LOGO}" alt=""><div><h1>Blueprint</h1><div style="font-weight:700;color:var(--blue)">Instructional coaching: agreement · identify · learn · implement and improve</div></div></div>
  <div class="dash">
   <button class="bigstart" data-act="newcycle"><span class="bs1">Start a coaching cycle</span><span class="bs2">Agree how you’ll work together, observe, then talk it through</span></button>
   ${inProgress()?`<div class="card cont"><div class="small muted">Continue where you left off</div><h3 style="margin:4px 0">${esc(D.teacher||"Untitled debrief")}</h3>
@@ -1186,7 +1196,8 @@ function step5(){
 function finishModal(){
  if(!(D.teacher||"").trim()){ctxOpen=true;rerenderKeep();toast("Add the teacher’s name at the top first.");return}
  storeLocal(D,true);
- showModal(`<h2>All saved ✓</h2><p class="small muted">This coaching conversation with <b>${esc(D.teacher)}</b> is saved in this browser and listed under Teachers.</p>
+ setTimeout(()=>autoBackup("cycle"),300);
+ showModal(`<h2>All saved ✓</h2><p class="small muted">This coaching conversation with <b>${esc(D.teacher)}</b> is saved in this browser and listed under Teachers. <span id="autoBk"></span></p>
  <div class="finrow"><button class="fbtn" data-m="sp"><b>Save all to SharePoint</b><span>The full conversation and the action card, in ${esc(D.teacher)}’s folder</span></button>
  <button class="fbtn" data-m="card"><b>Download the teacher’s action card</b><span>Word document – goal, technique, steps, look-for, follow-up</span></button>
  <button class="fbtn" data-m="ics" ${followupDate(D)?"":"disabled"}><b>Add follow-up to calendar</b><span>${followupDate(D)?`An Outlook invite for ${esc(followupDate(D))}`:"Add a follow-up date in step 5 first"}</span></button>
@@ -1470,9 +1481,11 @@ function settingsHTML(){
    <input class="t" id="spUrl" type="url" value="${esc(settings.spUrl)}" placeholder="https://yourschool.sharepoint.com/sites/Coaching/Shared Documents/Coaching conversations">
    <p class="small muted" style="margin:6px 0 10px">Open the coaching folder in SharePoint in your browser and copy the address. Blueprint adds the teacher’s name to make an “Open folder” link.</p>
    <div id="spConnect"></div>
+   ${fsSupported()?autoBackupSettingHTML():""}
   </div>
  </div>
  ${sheetSettingsHTML()}
+ ${pinSettingsHTML()}
  <div class="card" style="margin-top:14px"><h2>Cycle length</h2><p class="small muted" style="margin-top:0">The default time between cycles. Follow-up dates are set from it, and Blueprint flags cycles that come too often. A teacher’s coaching agreement can set their own.</p><div class="row"><input class="t" type="number" min="1" max="10" id="cycleWeeks" value="${+settings.cycleWeeks||3}" style="width:90px"><span>weeks</span></div></div>
  <div class="card" style="margin-top:14px"><h2>Debrief timer</h2><label class="chk" style="margin-bottom:8px"><input type="checkbox" id="timerOn" ${settings.timerOn?"checked":""}> Show a timer during debriefs</label><div class="row"><label class="f" style="margin:0">Debrief length (minutes)</label><input class="t" id="timerMins" type="number" min="5" max="60" value="${settings.timerMins||20}" style="width:90px"><span class="small muted">Phases: noticing 15% · reflection 15% · goals 20% · technique 15% · model / show 35%</span></div></div>
 `;
@@ -1602,19 +1615,20 @@ function dueInfo(list){const last=list[list.length-1];const dates=(last.chosen||
  const td=today(),d=dates[0];if(d<td)return {cls:"late",txt:"Follow-up overdue · "+d};const soon=ymdL(new Date(Date.now()+7*864e5));return d<=soon?{cls:"soon",txt:"Follow-up due "+d}:{cls:"ok",txt:"Follow-up "+d}}
 /* ---------- Teachers tab: cards ---------- */
 function teacherCardsHTML(){
- const names=[...new Set(saved.map(tKey))].sort();
- if(!names.length)return `<p class="muted">Nothing saved yet. Finish a coaching cycle and it will appear here.</p>`;
+ const allNames=[...new Set(saved.map(tKey))].sort();
+ if(!allNames.length)return `<p class="muted">Nothing saved yet. Finish a coaching cycle and it will appear here.</p>`;
+ const names=allNames.filter(n=>showArchived?isArchived(n):!isArchived(n));
  const all=names.map(n=>({n,pd:progressData(n)}));
  const cycles=saved.length,due=all.filter(x=>["late","soon"].includes(dueInfo(x.pd.list).cls)).length,lv=all.flatMap(x=>x.pd.levels),sec=lv.filter(l=>l==="secure").length;
  return `<div class="kpis"><div class="kpi"><b>${names.length}</b><span>teachers coached</span></div><div class="kpi"><b>${cycles}</b><span>coaching cycles</span></div><div class="kpi ${due?"warn":""}"><b>${due}</b><span>follow-ups due this week</span></div><div class="kpi"><b>${lv.length?Math.round(sec/lv.length*100)+"%":"–"}</b><span>action steps rated Secure</span></div></div>
- <div class="tcards">${all.map(({n,pd})=>{const last=pd.list[pd.list.length-1],g=(last.goals||[]).find(x=>x.id===last.goal),di=dueInfo(pd.list),s0=pd.series.find(x=>x.m.k==="otr"),ch=s0?changeOf(s0.pts,s0.m):null;
+ ${archiveBarHTML(allNames)}${names.length?"":`<p class="muted">${showArchived?"No archived teachers.":"Every teacher is archived. Start a cycle with a teacher to bring them back, or choose Show archived."}</p>`}<div class="tcards">${all.map(({n,pd})=>{const last=pd.list[pd.list.length-1],g=(last.goals||[]).find(x=>x.id===last.goal),di=dueInfo(pd.list),s0=pd.series.find(x=>x.m.k==="otr"),ch=s0?changeOf(s0.pts,s0.m):null;
   const ini=n.replace(/\(.*\)/,"").replace(/^Sample\s*–\s*/,"").replace(/^(Ms|Mr|Mrs|Miss|Dr)\.?\s+/,"").trim().split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?";
   return `<div class="tcard"><div class="row" style="align-items:center;gap:10px"><span class="avatar">${esc(ini)}</span><div style="flex:1;min-width:0"><h3 style="margin:0">${esc(n)}</h3><div class="small muted">${pd.list.length} cycle${pd.list.length>1?"s":""} · last ${esc(last.date||"")}</div></div></div>
    ${g?`<div class="small tgoal">Goal: <b>${esc(g.text)}</b></div>`:""}
    <div class="small">${last.chosen.filter(id=>T[id]).map(id=>{const l=latestLevel(last,id);return `<span class="tchip">${esc(T[id].n)}${l?` <i style="background:${LV_COL[l]}" title="${levelName(l)}"></i>`:""}</span>`}).join("")}</div>
    <div class="trow2"><div>${s0&&s0.pts.filter(p=>p.v!=null).length>=2?`${sparkSVG(s0.pts.map(p=>p.v))}<div class="small muted">Responses per minute${ch?` <span class="tr ${ch.trend}">${TREND[ch.trend][0]} ${s0.m.fmt(ch.a)} → ${s0.m.fmt(ch.b)}</span>`:""}</div>`:`<div class="small muted">Growth chart appears after two observed cycles</div>`}</div>
    <span class="due ${di.cls}">${esc(di.txt)}</span></div>
-   <div class="row" style="gap:6px;margin-top:10px"><button class="btn sm hi" data-progress="${esc(n)}">View progress</button><button class="btn sm alt" data-nextcycle="${last.id}">Start next cycle</button><button class="btn sm ghost" data-agreefor="${esc(n)}">${agreementFor(n)?"Agreement ✓":"Set up agreement"}</button></div></div>`}).join("")}</div>`}
+   <div class="row" style="gap:6px;margin-top:10px"><button class="btn sm hi" data-progress="${esc(n)}">View progress</button><button class="btn sm alt" data-nextcycle="${last.id}">Start next cycle</button><button class="btn sm ghost" data-agreefor="${esc(n)}">${agreementFor(n)?"Agreement ✓":"Set up agreement"}</button><button class="btn sm ghost" data-archive="${esc(n)}">${isArchived(n)?"Restore":"Archive"}</button></div></div>`}).join("")}</div>`}
 /* ---------- Progress page ---------- */
 function progressHTML(){
  const pd=progressData(curTeacher);if(!pd.list.length){return `<p class="muted">No cycles for this teacher.</p>`}
@@ -2055,7 +2069,7 @@ function actMore(x){
  if(x==="wreset"){W.obs.elapsed=0;W.obs.startedAt=null;saveW();rerenderKeep();return true}
  if(x==="wdiscard"){const keep=W;W=blankVisit(keep);W.year=keep.year;saveW();rerenderKeep();toast(`Visit cleared. <button class="btn sm undo" id="undoWd">Undo</button>`,6000);const u=$("#undoWd");if(u)u.onclick=()=>{W=keep;saveW();$("#toast").style.display="none";rerenderKeep()};return true}
  if(x==="wnext"){if(!storeVisit()){toast("Tap what you see first – nothing’s recorded for this room yet.");return true}const room=W.room;W=blankVisit(W);saveW();setView("walk");toast(`${room?esc(room)+" saved":"Visit saved"}. On to the next room.`,3000);return true}
- if(x==="wfinish"){const stored=storeVisit();const n=W?walks.filter(v=>v.walk===W.walk).length:0;W=null;LS.set("cdp_walkdraft",null);teachTab="walks";setView("saved");toast(n?`Learning walk saved – ${n} room${n===1?"":"s"}.`:(stored?"Visit saved.":"Nothing recorded, so nothing was saved."),4000);return true}
+ if(x==="wfinish"){setTimeout(()=>autoBackup("walk"),300);const stored=storeVisit();const n=W?walks.filter(v=>v.walk===W.walk).length:0;W=null;LS.set("cdp_walkdraft",null);teachTab="walks";setView("saved");toast(n?`Learning walk saved – ${n} room${n===1?"":"s"}.`:(stored?"Visit saved.":"Nothing recorded, so nothing was saved."),4000);return true}
  if(x==="togglefocus"){const on=isFocus(curTech);setFocus(on?"":curTech);rebuild();rerenderKeep();toast(on?"School focus cleared.":`${T[curTech].n} is now the school focus${focusTerm()?" for "+esc(focusTerm()):""}. Change it in Settings.`,5000);return true}
  if(x==="termreport"){termReport();return true}
  if(x==="termreportgo"){teachTab="patterns";setView("saved");toast("Set the dates for the term, then choose Download term report.",5000);return true}
@@ -2135,7 +2149,7 @@ function agreeSheet(t){
 /* nudges shown on the observation screen */
 function alignNudges(){
  if(!(D.teacher||"").trim())return "";
- const a=agreementFor(D.teacher),out=[];
+ const a=agreementFor(D.teacher),out=[];const rn=renewNudge();if(rn)out.push(rn);
  if(!a)out.push(`<div class="anudge"><span>No coaching agreement with <b>${esc(D.teacher)}</b> yet.</span><button class="btn alt sm" data-act="agreeopen">Set it up</button></div>`);
  const pc=D.prev?saved.find(s=>s.id===D.prev):null;
  if(pc&&pc.date&&D.date){const gap=daysBetween(pc.date,D.date),w=cycleWeeks(D.teacher);
@@ -2256,13 +2270,155 @@ function bindAlign(all){
 function actAlign(x){
  if(x==="agreeopen"){agreeT=D.teacher;setView("agree");return true}
  if(x==="agreeteacher"){const n=($("#agTeacher").value||"").trim();if(!n){toast("Enter the teacher’s name first.");return true}
-  D.teacher=n;const a=agreementFor(n);if(a&&!D.coach)D.coach=a.coach||"";if(a&&a.model)D.model=a.model;ctxOpen=false;saveDraft();agreeT=n;
+  D.teacher=n;if(isArchived(n))setArchived(n,false);const a=agreementFor(n);if(a&&!D.coach)D.coach=a.coach||"";if(a&&a.model)D.model=a.model;ctxOpen=false;saveDraft();agreeT=n;
   if(a){toast(`Agreement with ${esc(n)} is in place – on to Identify.`);step=0;setView("debrief")}else setView("agree");return true}
  if(x==="agreeback"){if(!agreeT&&!D.teacher){setView("home");return true}setView(D.teacher&&akey(D.teacher)===akey(agreeT)?"debrief":"saved");return true}
  if(x==="agreesave"){const t=agreeT||D.teacher;const isNew=!agreements[akey(t)];if(isNew){agreements[akey(t)]=agreeBlank(t);persistAgreements()}const a=agreements[akey(t)];
+  delete a.renew;persistAgreements();
   if(akey(D.teacher)===akey(t)){if(!D.coach)D.coach=a.coach||"";if(a.model&&(!D.model||D.model==="one"))D.model=a.model;saveDraft();if(isNew)toast("Coaching agreement saved.");step=0;setView("debrief")}else{toast("Coaching agreement saved.");setView("saved")}return true}
  if(x==="agreedoc"){const t=agreeT||D.teacher;if(!agreements[akey(t)]){agreements[akey(t)]=agreeBlank(t);persistAgreements()}downloadDocx(`${today()} ${cleanName(t)} – coaching agreement.docx`,agreeSheet(t),`${t} – coaching agreement`).then(ok=>ok&&toast("Agreement downloaded as a Word document.",4000));return true}
- if(x==="addreview"){const t=agreeT||D.teacher,a=agreements[akey(t)];if(!a)return true;a.reviews=a.reviews||[];a.reviews.push({date:today(),decision:$("#rvDec").value,note:$("#rvNote").value});persistAgreements();rerenderKeep();toast("Review recorded.");return true}
+ if(x==="addreview"){const t=agreeT||D.teacher,a=agreements[akey(t)];if(!a)return true;a.reviews=a.reviews||[];a.reviews.push({date:today(),decision:$("#rvDec").value,note:$("#rvNote").value});delete a.renew;persistAgreements();rerenderKeep();toast("Review recorded.");return true}
+ return false;
+}
+
+/* =====================================================================
+   AUTO BACKUP · ARCHIVE + NEW SCHOOL YEAR · SCREEN HELP · PIN LOCK
+   ===================================================================== */
+
+/* ---------- automatic SharePoint backup ---------- */
+async function autoBackup(reason){
+ if(settings.autoBackup===false||!fsSupported())return;
+ try{const r=await loadRoot();if(!r||!(await permitted(r,false)))return;
+  await writeTo(["Backups"],`Blueprint backup ${today()}.json`,new Blob([JSON.stringify(backupData(),null,1)],{type:"application/json"}));
+  LS.set(KEYS.backup,Date.now());
+  const n=$("#autoBk");if(n)n.textContent="Backed up to SharePoint ✓";
+ }catch(e){console.warn("auto backup",e)}
+}
+function autoBackupSettingHTML(){
+ return `<label class="chk" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px"><input type="checkbox" id="autoBkOn" ${settings.autoBackup===false?"":"checked"}><span>Back up automatically to the SharePoint folder (Backups) each time a coaching cycle or learning walk is finished. One file a day – it needs the folder connected above.</span></label>`;
+}
+
+/* ---------- archive + new school year ---------- */
+const archived=()=>new Set(settings.archived||[]);
+const isArchived=n=>archived().has(akey(n));
+let showArchived=false;
+function setArchived(n,on){const s=archived();on?s.add(akey(n)):s.delete(akey(n));settings.archived=[...s];persist("settings")}
+function archiveBarHTML(names){
+ const a=names.filter(isArchived).length;
+ return `<div class="row small" style="margin:0 0 10px;gap:8px">${showArchived?`<b>Archived teachers</b><span class="muted">– they come back automatically when you start a cycle with them</span><span class="spacer"></span><button class="btn alt sm" data-act="showcurrent">Show current teachers</button>`:`<span class="muted">${names.length-a} current teacher${names.length-a===1?"":"s"}</span>${a?`<button class="btn ghost sm" data-act="showarchived">Show archived (${a})</button>`:""}<span class="spacer"></span><button class="btn ghost sm" data-act="newyear">New school year…</button>`}</div>`;
+}
+function newYearModal(){
+ showModal(`<h2>Start a new school year</h2><p class="small muted">Every record stays in Blueprint. This just tidies things up for the new year. A backup is made first.</p>
+ <label class="chk" style="display:flex;gap:8px;margin:8px 0"><input type="checkbox" id="nyArch" checked> Archive every teacher – each one comes back when you start a cycle with them</label>
+ <label class="chk" style="display:flex;gap:8px;margin:8px 0"><input type="checkbox" id="nyDates" checked> Clear last year’s follow-up dates, so nothing shows as overdue</label>
+ <label class="chk" style="display:flex;gap:8px;margin:8px 0"><input type="checkbox" id="nyAgree" checked> Ask to review each coaching agreement at the teacher’s next cycle</label>
+ <label class="chk" style="display:flex;gap:8px;margin:8px 0"><input type="checkbox" id="nyPat" checked> Start Patterns, learning walks and the term report from today</label>
+ <div class="row" style="margin-top:12px"><span class="spacer"></span><button class="btn ghost" data-mclose>Cancel</button><button class="btn hi" id="nyGo">Start the new year</button></div>`);
+ $("#nyGo").onclick=async()=>{
+  const o={arch:$("#nyArch").checked,dates:$("#nyDates").checked,agree:$("#nyAgree").checked,pat:$("#nyPat").checked};
+  hideModal();await smartBackup();
+  if(o.arch){settings.archived=[...new Set([...(settings.archived||[]),...saved.map(s=>akey(s.teacher))])];}
+  if(o.dates){saved.forEach(s=>Object.values(s.plans||{}).forEach(p=>{if(p&&p.follow&&p.follow<today())p.follow=""}));persist("saved")}
+  if(o.agree){Object.values(agreements).forEach(a=>a.renew=today());persistAgreements()}
+  if(o.pat){patFilter.from=today();patFilter.to=""}
+  persist("settings");showArchived=false;render();toast("New school year set up. Last year’s records are kept – use Show archived to see them.",6000);
+ };
+}
+function renewNudge(){
+ const a=agreementFor(D.teacher);if(!a||!a.renew)return "";
+ return `<div class="anudge"><span>New school year – review the coaching agreement with <b>${esc(D.teacher)}</b> before you start.</span><button class="btn alt sm" data-act="agreeopen">Review it</button></div>`;
+}
+
+/* ---------- help for each screen ---------- */
+const HELP={
+ home:["Home","Start here. Start a coaching cycle begins with the agreement, then Identify, Learn, and Implement and improve. Follow-ups due this week are listed underneath.","Example: tap Start a coaching cycle, type the teacher’s name, and Blueprint takes you to the agreement or straight to Identify."],
+ agree:["Coaching agreement","Set up how you’ll work together before the first cycle: coaching is for growth and separate from PDP, the cycle length, the coaching model and when you’ll review the relationship. Download it as Word to sign.","Example: a three-week cycle, Wednesdays at 3:30, review after cycle 3."],
+ d0:["Identify – evidence","Choose the evidence for this cycle, agree an observation focus with the teacher, then tap the tallies as you watch. The timer starts on your first tap. On a follow-up, record each key ingredient as seen, partly or not seen yet.","Example: focus ‘every student responds’, tap Mini whiteboards each time boards go up."],
+ d1:["Appreciative noticing","Name two or three things the teacher did and the effect on students, using the evidence. Be specific so the teacher knows what to keep doing.","Example: “When you said ‘boards up’ after the wait, all 24 boards were up within 5 seconds.”"],
+ d2:["Inviting reflection","Ask an open question and record the teacher’s own words. Use the coaching moves above for stems that listen, clarify and direct back to the evidence.","Example: “What did you notice when the boards went up?”"],
+ d3:["Agree a goal","Put a few possible goals on the table, then agree on one, written as the change you want to see in students. Link it to the school priority.","Example: “Every student shows an answer before anyone shares.”"],
+ d4:["Choose the technique","Pick one or two best bets for the goal. School playbook techniques and the school focus come first. Open a play to check it fits.","Example: goal about every student responding → Mini whiteboards or Cold call."],
+ d5:["Learn – explain, model, rehearse","Walk through the key-ingredients checklist, model it, then the teacher rehearses. Tick what you saw for specific feedback. Then plan the action step and the follow-up date.","Example: “You used 1 and 3. Next, try 2 – the cue before boards go up.”"],
+ library:["Library","Every technique play, grouped by VTLM 2.0 element and focus area. Search by name or problem. Playbook techniques are marked.","Example: search ‘transitions’ to find routines for moving between activities."],
+ tech:["Technique play","Five steps, the key-ingredients checklist, where you can adapt, pitfalls and rehearsal prompts. Add a video, your school’s tweaks, or add it to the playbook.","Example: tap ✎ under Where you can adapt to record your school’s attention call."],
+ teachers:["Teachers","Each teacher’s cycles, current goal, action steps and when a follow-up is due. Start the next cycle, view progress, open their agreement or archive them.","Example: View progress shows growth in responses per minute across cycles."],
+ patterns:["Patterns","Whole-school patterns across all cycles: goals, focus areas, techniques and follow-up ratings. Set the dates, then download the term report for leaders.","Example: set From to the first day of term, then Download term report."],
+ walks:["Learning walks","Short visits across many rooms. Shows how often practices are seen, by year level, and how often school focus look-fors appear.","Example: a 6-room walk at the start of term to see where checks for understanding happen."],
+ walk:["Learning walk visit","Enter the room and year level, tap what you see for 5–10 minutes, then Save – next room. There’s no debrief.","Example: Room 12, Year 4 – 3 mini whiteboards, 2 cold calls in 6 minutes."],
+ progress:["View progress","One teacher’s growth across cycles: measures from each observation, action step ratings and the coaching journey. Download it as a Word report.","Example: responses per minute rising from 1.2 to 2.8 over three cycles."],
+ more:["More","Learning walks, the school playbook, resources, backup and settings.","Example: Back up now saves everything to your SharePoint coaching folder."],
+ settings:["Settings","Your school name, logo and colours, the SharePoint folder, school focus, cycle length, techniques spreadsheet, PIN lock and backups.","Example: choose the Victorian Lesson Plans colour scheme – Word documents use it too."],
+ resources:["Resources","Links to the department guides and the research behind Blueprint.",""],
+ edit:["Edit a technique","Change any part of a play. Edited techniques show an Edited badge and can be reset to the original.",""]
+};
+function helpKey(){if(view==="debrief")return "d"+step;if(view==="saved")return teachTab==="patterns"?"patterns":teachTab==="walks"?"walks":"teachers";return view}
+function showHelp(){
+ const h=HELP[helpKey()]||HELP.home;
+ showModal(`<h2>${esc(h[0])}</h2><p>${esc(h[1])}</p>${h[2]?`<div class="say">${esc(h[2])}</div>`:""}<p class="small muted" style="margin-top:12px">The leaders’ guide has more detail.</p><div class="row" style="margin-top:10px"><span class="spacer"></span><button class="btn hi" data-mclose>Got it</button></div>`);
+}
+
+/* ---------- PIN lock ---------- */
+const PIN_IDLE=15*60*1000;
+let lastActive=Date.now();
+["click","keydown","touchstart"].forEach(e=>document.addEventListener(e,()=>{lastActive=Date.now()},{passive:true}));
+const pinOn=()=>!!settings.pinHash;
+const unlocked=()=>{try{return sessionStorage.getItem("cdp_unlocked")==="1"}catch(e){return false}};
+function setUnlocked(on){try{on?sessionStorage.setItem("cdp_unlocked","1"):sessionStorage.removeItem("cdp_unlocked")}catch(e){}}
+async function sha(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+function isLocked(){
+ if(!pinOn())return false;
+ if(unlocked()&&Date.now()-lastActive>PIN_IDLE)setUnlocked(false);
+ return !unlocked();
+}
+function viewNeedsPin(){
+ if(view==="saved"||view==="progress")return true;
+ if(view==="agree"){const t=agreeT||D.teacher;return !!agreementFor(t)&&akey(t)!==akey(D.teacher)}
+ return false;
+}
+function lockHTML(){
+ return `<div class="lockbox"><div class="lockic" aria-hidden="true">🔒</div><h1>Enter your PIN</h1><p class="muted">Teacher records are locked on this device.</p>
+ <input class="t pinin" id="pinIn" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="PIN" aria-label="PIN">
+ <div class="row" style="justify-content:center;margin-top:12px"><button class="btn hi" data-act="pinunlock">Unlock</button></div>
+ <p class="small" style="margin-top:14px"><a href="#" data-act="pinforgot">Forgot your PIN?</a></p></div>`;
+}
+let pendingAfterUnlock=null;
+function needPin(fn){if(!isLocked())return fn();pendingAfterUnlock=fn;showModal(`<h2>Enter your PIN</h2><p class="small muted">This exports teacher records.</p><input class="t pinin" id="pinM" type="password" inputmode="numeric" maxlength="8" placeholder="PIN"><div class="row" style="margin-top:10px"><span class="spacer"></span><button class="btn ghost" data-mclose>Cancel</button><button class="btn hi" id="pinMgo">Unlock</button></div>`);
+ const go=async()=>{if(await checkPin($("#pinM").value)){hideModal();const f=pendingAfterUnlock;pendingAfterUnlock=null;render();f&&f()}else toast("That PIN isn’t right.")};$("#pinMgo").onclick=go;$("#pinM").onkeydown=e=>{if(e.key==="Enter")go()};$("#pinM").focus()}
+async function checkPin(p){if(!p)return false;const ok=(await sha(settings.pinSalt+"|"+p))===settings.pinHash;if(ok){setUnlocked(true);lastActive=Date.now()}return ok}
+function pinSettingsHTML(){
+ return `<div class="card" style="margin-top:14px"><h2>PIN lock</h2><p class="small muted" style="margin-top:0">Ask for a PIN before showing the Teachers tab, progress, agreements and exports on this device – useful when an iPad or laptop is shared. It locks again after 15 minutes without use or when Blueprint is closed. It’s a privacy screen, not encryption: records are still stored in this browser.</p>
+ ${pinOn()?`<div class="row"><span class="pill">PIN is on</span><button class="btn alt sm" data-act="pinlock">Lock now</button><button class="btn alt sm" data-act="pinchange">Change PIN</button><button class="btn ghost sm" data-act="pinremove">Turn off</button></div>`:`<div class="row"><input class="t pinin" id="pinNew" type="password" inputmode="numeric" maxlength="8" placeholder="4–8 digits" style="width:140px"><input class="t pinin" id="pinNew2" type="password" inputmode="numeric" maxlength="8" placeholder="Again" style="width:140px"><button class="btn hi" data-act="pinset">Turn on PIN</button></div>`}</div>`;
+}
+async function pinSet(p,p2){
+ if(!/^\d{4,8}$/.test(p||"")){toast("Use 4 to 8 digits.");return false}
+ if(p!==p2){toast("The two PINs don’t match.");return false}
+ const salt=Math.random().toString(36).slice(2,10),code=Array.from(crypto.getRandomValues(new Uint8Array(5)),b=>"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b%32]).join("")+"-"+Array.from(crypto.getRandomValues(new Uint8Array(4)),b=>"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b%32]).join("");
+ settings.pinSalt=salt;settings.pinHash=await sha(salt+"|"+p);settings.pinRecovery=await sha(salt+"|R|"+code);persist("settings");setUnlocked(true);
+ showModal(`<h2>PIN is on</h2><p>Write down this recovery code and keep it somewhere safe. You’ll need it if you forget your PIN.</p><div class="reccode">${code}</div><div class="row" style="margin-top:12px"><span class="spacer"></span><button class="btn hi" data-mclose>I’ve saved it</button></div>`);
+ return true;
+}
+function pinForgot(){
+ showModal(`<h2>Forgot your PIN?</h2><p class="small muted">Enter the recovery code you saved when you turned the PIN on. The PIN is then turned off and you can set a new one.</p><input class="t" id="recIn" placeholder="ABCDE-FGHJ" style="text-transform:uppercase"><div class="row" style="margin-top:10px"><span class="spacer"></span><button class="btn ghost" data-mclose>Cancel</button><button class="btn hi" id="recGo">Turn off the PIN</button></div>`);
+ $("#recGo").onclick=async()=>{const c=($("#recIn").value||"").trim().toUpperCase();if(c&&(await sha(settings.pinSalt+"|R|"+c))===settings.pinRecovery){delete settings.pinHash;delete settings.pinSalt;delete settings.pinRecovery;persist("settings");setUnlocked(false);hideModal();render();toast("PIN turned off. You can set a new one in Settings.",5000)}else toast("That recovery code isn’t right.")};
+}
+
+/* ---------- events ---------- */
+function bindExtra(all){
+ all("[data-archive]",b=>b.onclick=()=>{const n=b.dataset.archive,on=!isArchived(n);setArchived(n,on);rerenderKeep();toast(on?`${esc(n)} archived. Their records are kept.`:`${esc(n)} restored.`)});
+ const ab=$("#autoBkOn");if(ab)ab.onchange=()=>{settings.autoBackup=ab.checked;persist("settings")};
+ const pi=$("#pinIn");if(pi){pi.focus();pi.onkeydown=e=>{if(e.key==="Enter")actExtra("pinunlock")}}
+}
+function actExtra(x){
+ if(x==="showarchived"){showArchived=true;rerenderKeep();return true}
+ if(x==="showcurrent"){showArchived=false;rerenderKeep();return true}
+ if(x==="newyear"){newYearModal();return true}
+ if(x==="pinunlock"){checkPin(($("#pinIn")||{}).value).then(ok=>{if(ok)render();else{toast("That PIN isn’t right.");const i=$("#pinIn");if(i){i.value="";i.focus()}}});return true}
+ if(x==="pinforgot"){pinForgot();return true}
+ if(x==="pinlock"){setUnlocked(false);toast("Locked.");setView("home");return true}
+ if(x==="pinset"){pinSet($("#pinNew").value,$("#pinNew2").value).then(ok=>ok&&rerenderKeep());return true}
+ if(x==="pinremove"||x==="pinchange"){needPin(()=>{if(x==="pinremove"){delete settings.pinHash;delete settings.pinSalt;delete settings.pinRecovery;persist("settings");toast("PIN turned off.")}else{delete settings.pinHash;persist("settings");toast("Enter a new PIN.")}rerenderKeep()});return true}
+ if(x==="help"){showHelp();return true}
+ if(["backup","spbackup","csv","termreport","xlsxout"].includes(x)&&isLocked()){needPin(()=>act(x));return true}
  return false;
 }
 
@@ -2643,12 +2799,13 @@ async function downloadDocx(filename,html,title,data){html=html.replace(/<\/div>
 const NAVOF={progress:"saved",home:"home",debrief:"debrief",library:"library",tech:"library",edit:"library",saved:"saved",more:"more",settings:"more",resources:"more",walk:"saved",agree:"debrief"};
 function setView(v){if(v==="observe"){step=0;v="debrief"}if(v==="patterns"){teachTab="patterns";v="saved"}view=v;const nv=NAVOF[v]||"home";document.querySelectorAll("header nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===nv));render();window.scrollTo(0,0)}
 document.querySelectorAll("header nav button").forEach(b=>b.onclick=()=>{if(b.dataset.v==="saved")teachTab="teachers";setView(b.dataset.v)});
+{const hb=document.querySelector("header .navhelp");if(hb)hb.onclick=()=>showHelp();}
 document.querySelector("header .brand").onclick=()=>setView("home");
 if(!settings.helpSeen)setTimeout(showHelp,300);
 function render(){
  const a=$("#app"), y=window.scrollY;
  const V={home:homeHTML,debrief:debriefHTML,library:libraryHTML,tech:()=>T[curTech]?techHTML(curTech):libraryHTML(),edit:editHTML,saved:savedHTML,progress:progressHTML,settings:settingsHTML,more:moreHTML,resources:resourcesPage,walk:walkHTML,agree:agreeHTML};
- a.innerHTML=(V[view]||homeHTML)();
+ a.innerHTML=isLocked()&&viewNeedsPin()?lockHTML():(V[view]||homeHTML)();
  bind();
  if(view==="debrief"&&step===0)window.scrollTo(0,y);
 }
@@ -2749,11 +2906,12 @@ function bind(){
  // patterns
  const pf=$("#pFrom"),pt=$("#pTo"),pn=$("#pNames");
  if(pf)pf.onchange=()=>{patFilter.from=pf.value;render()}; if(pt)pt.onchange=()=>{patFilter.to=pt.value;render()}; if(pn)pn.onchange=()=>{patFilter.names=pn.checked};
- bindMore(all);bindAlign(all);
+ bindMore(all);bindAlign(all);bindExtra(all);
  all("[data-agreefor]",b=>b.onclick=()=>{agreeT=b.dataset.agreefor;setView("agree")});
  all("[data-act]",b=>b.onclick=()=>act(b.dataset.act));
 }
 async function act(x){
+ if(actExtra(x))return;
  if(actMore(x))return;
  if(actAlign(x))return;
  if(x==="new"){act("newcycle");return}
