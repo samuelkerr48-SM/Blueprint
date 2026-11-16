@@ -2128,6 +2128,10 @@ function agreeHTML(){
  <h1 style="margin-top:8px">Coaching agreement – ${esc(t)}</h1>
  <p class="lead">Set up the relationship and the practical arrangements before the first cycle. It’s done once, and reviewed at an agreed point.</p>
  <div class="card"><h3>What we agree</h3>${AGREE_ITEMS.map(([k,l])=>`<label class="chk" style="display:flex;gap:8px;margin:6px 0"><input type="checkbox" data-ag="items.${k}" ${a.items[k]?"checked":""}> ${l}</label>`).join("")}</div>
+ <div class="card" style="margin-top:12px"><h3>How the teacher would like to be coached</h3>
+  <div class="row small" style="gap:10px"><span>Facilitative</span><input type="range" min="1" max="5" step="1" data-ag="prefDir" value="${+a.prefDir||3}" style="flex:1;max-width:320px" aria-label="Preferred coaching style"><span>Directive</span><b id="prefLbl" style="min-width:150px">${DIR_LEVELS[(+a.prefDir||3)-1]}</b></div>
+  <p class="small muted" style="margin:6px 0 8px">Facilitative: the teacher leads and the coach asks questions. Directive: the coach names what they saw, suggests the next step and models it. Most people want something in between, and it can change as the practice becomes theirs.</p>
+  <label class="f">Anything else about how you like to receive feedback</label><input class="t" data-ag="prefNote" value="${esc(a.prefNote||"")}" placeholder="e.g. Show me first, then let me try it; I like time to think before answering"></div>
  <div class="card" style="margin-top:12px"><h3>Arrangements</h3><div class="ldgrid">
   <div><label class="f">Coach</label><input class="t" data-ag="coach" value="${esc(a.coach)}"></div>
   <div><label class="f">Coaching model</label><select class="t" data-ag="model">${MODELS.map(([k,l])=>`<option value="${k}" ${a.model===k?"selected":""}>${l}</option>`).join("")}</select></div>
@@ -2146,7 +2150,7 @@ function agreeSheet(t){
  return `<div class="page">${head("Coaching agreement",t+" · "+a.date)}
  <p>Instructional coaching is job-embedded professional learning. It works through cycles of evidence gathering, goal setting, learning, practice, feedback and refinement, focused on the change we want to see in students.</p>
  <h2>What we agree</h2><table>${AGREE_ITEMS.map(([k,l])=>`<tr><td style="width:8%;text-align:center">${a.items[k]?"✓":"☐"}</td><td>${esc(l)}</td></tr>`).join("")}</table>
- <h2>Arrangements</h2><table><tr><th style="width:34%">Teacher</th><td>${esc(t)}</td></tr><tr><th>Coach</th><td>${esc(a.coach)}</td></tr><tr><th>Coaching model</th><td>${esc(modelName(a.model))}</td></tr><tr><th>Cycle length</th><td>${esc(a.weeks)} weeks</td></tr><tr><th>Meeting time</th><td>${esc(a.meeting)}</td></tr><tr><th>School priority / professional learning</th><td>${esc(a.priority)}</td></tr><tr><th>Review the relationship</th><td>After cycle ${esc(a.review)}</td></tr>${a.notes?`<tr><th>Also agreed</th><td>${esc(a.notes).replace(/\n/g,"<br>")}</td></tr>`:""}</table>
+ <h2>Arrangements</h2><table><tr><th style="width:34%">Teacher</th><td>${esc(t)}</td></tr><tr><th>Coach</th><td>${esc(a.coach)}</td></tr><tr><th>Coaching model</th><td>${esc(modelName(a.model))}</td></tr><tr><th>How I’d like to be coached</th><td>${DIR_LEVELS[(+a.prefDir||3)-1]}${a.prefNote?` – ${esc(a.prefNote)}`:""}</td></tr><tr><th>Cycle length</th><td>${esc(a.weeks)} weeks</td></tr><tr><th>Meeting time</th><td>${esc(a.meeting)}</td></tr><tr><th>School priority / professional learning</th><td>${esc(a.priority)}</td></tr><tr><th>Review the relationship</th><td>After cycle ${esc(a.review)}</td></tr>${a.notes?`<tr><th>Also agreed</th><td>${esc(a.notes).replace(/\n/g,"<br>")}</td></tr>`:""}</table>
  <h2>The coaching cycle</h2><table><tr><th>Agreement</th><th>Identify</th><th>Learn</th><th>Implement and improve</th></tr><tr><td>The relationship and arrangements (this page)</td><td>Classroom evidence and a goal for students</td><td>Explanation, modelling, rehearsal and feedback</td><td>Use it in class, review and refine with support</td></tr></table>
  ${(a.reviews||[]).length?`<h2>Reviews</h2><table><tr><th>Date</th><th>Decision</th><th>Notes</th></tr>${a.reviews.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.decision)}</td><td>${esc(r.note)}</td></tr>`).join("")}</table>`:""}
  <h2>Signed</h2><table><tr><th style="width:50%">Teacher</th><th>Coach</th></tr><tr><td style="height:40px"></td><td></td></tr></table></div>`;
@@ -2224,10 +2228,12 @@ const MOVES=[
 ];
 let movesOpen=false;
 function movesHTML(){
+ const ag=agreementFor(D.teacher),pref=ag&&+ag.prefDir;
+ if(!D.dirSet&&pref)D.direction=pref;
  const d=+D.direction||3,t=dirTier(d);
  return `<details class="moves" ${movesOpen?"open":""}><summary>Coaching moves – ${DIR_LEVELS[d-1].toLowerCase()}</summary>
  <div class="row small" style="margin-top:8px;gap:10px"><span>Facilitative</span><input type="range" min="1" max="5" step="1" data-dir value="${d}" style="flex:1;max-width:280px" aria-label="Level of direction"><span>Directive</span></div>
- <p class="small" style="margin:6px 0 0"><b>${DIR_LEVELS[d-1]}:</b> ${DIR_NOTE[t]} <span class="muted">Adapt the level of direction to the teacher’s needs and goals – usually more directive early on, more facilitative as the practice becomes theirs.</span></p>
+ ${pref?`<p class="small" style="margin:6px 0 0"><span class="pill">${esc(D.teacher)} prefers: ${DIR_LEVELS[pref-1].toLowerCase()}</span>${ag.prefNote?` <span class="muted">${esc(ag.prefNote)}</span>`:""}</p>`:""}<p class="small" style="margin:6px 0 0"><b>${DIR_LEVELS[d-1]}:</b> ${DIR_NOTE[t]} <span class="muted">Adapt the level of direction to the teacher’s needs and goals – usually more directive early on, more facilitative as the practice becomes theirs.</span></p>
  <div class="mgrid">${MOVES.map(m=>`<div><b>${m[0]}</b>${m[1+t].map(x=>`<div class="small">${x}</div>`).join("")}</div>`).join("")}</div></details>`;
 }
 function approachCardHTML(list){
@@ -2281,7 +2287,7 @@ function bindAlign(all){
   else if(k==="learn"){step=5;render()}
   else if(k==="impl"){if(D.prev){step=0;render()}else toast("After this cycle the teacher uses the practice in class. The follow-up visit reviews and refines it – start it from Teachers › Start next cycle.",6000)}});
  all("[data-ag]",el=>{const f=()=>{const t=agreeT||D.teacher;const a=agreements[akey(t)]||(agreements[akey(t)]=agreeBlank(t));const k=el.dataset.ag;
-  if(k.startsWith("items."))a.items[k.slice(6)]=el.checked;else a[k]=el.type==="number"?+el.value:el.value;persistAgreements()};el.oninput=f;el.onchange=f});
+  if(k.startsWith("items."))a.items[k.slice(6)]=el.checked;else a[k]=(el.type==="number"||el.type==="range")?+el.value:el.value;if(k==="prefDir"){const l=$("#prefLbl");if(l)l.textContent=DIR_LEVELS[a.prefDir-1]}persistAgreements()};el.oninput=f;el.onchange=f});
  all("[data-ev]",b=>b.onclick=()=>{const k=b.dataset.ev;D.evidence=D.evidence||["live"];D.evidence=D.evidence.includes(k)?D.evidence.filter(x=>x!==k):D.evidence.concat(k);saveDraft();rerenderKeep()});
  all("[data-reh]",b=>b.onclick=()=>{const [id,i]=b.dataset.reh.split("|");const p=D.plans[id];p.reh=p.reh||{};p.reh[i]=!p.reh[i];if(!p.reh[i])delete p.reh[i];if(Object.keys(p.reh).length)p.rehearsed=true;saveDraft();rerenderKeep()});
  all("[data-emb]",b=>b.onclick=()=>{const [id,s]=b.dataset.emb.split("|"),i=+s;const p=D.plans[id];p.emb=p.emb||[];p.emb=p.emb.includes(i)?p.emb.filter(x=>x!==i):p.emb.concat(i);saveDraft();rerenderKeep()});
