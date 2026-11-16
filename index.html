@@ -411,6 +411,10 @@ table.mini td{border-bottom:1px solid var(--line);padding:6px 8px;vertical-align
 .coachref{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:8px 12px}.coachref summary{cursor:pointer;font-weight:700;color:var(--navy)}
 @media(max-width:640px){.stages{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+header.top nav button.navhome{display:inline-flex;align-items:center;gap:6px}
+@media(max-width:520px){header.top nav button.navhome span{display:none}}
+.brand{cursor:pointer}
+
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-180.png">
@@ -422,6 +426,7 @@ table.mini td{border-bottom:1px solid var(--line);padding:6px 8px;vertical-align
 <header class="top">
   <div class="brand"><span class="mark"><img id="hdrLogo" alt=""></span>Blueprint<span id="schoolBrand"></span></div>
   <nav>
+    <button data-v="home" class="navhome" aria-label="Home"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Home</span></button>
     <button data-v="debrief">Coach</button>
     <button data-v="library">Library</button>
     <button data-v="saved">Teachers</button>
