@@ -423,6 +423,8 @@ button:focus-visible,.btn:focus-visible,a:focus-visible{outline:3px solid var(--
 .lockbox{max-width:360px;margin:60px auto;text-align:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 24px}
 .lockic{font-size:34px}.pinin{text-align:center;font-size:22px;letter-spacing:6px;max-width:200px;margin:0 auto;display:block}
 .reccode{font-family:Consolas,monospace;font-size:26px;letter-spacing:3px;text-align:center;background:var(--b50);border:1px dashed var(--b300);border-radius:10px;padding:14px;color:var(--navy)}
+.appr{display:flex;gap:10px;flex-wrap:wrap}.ap{border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:120px}.apdots{display:flex;gap:4px;margin:6px 0}.apdots i{width:16px;height:8px;border-radius:4px;background:var(--b100)}.apdots i.on{background:var(--navy)}
+input[type=range],input[type=checkbox],input[type=radio],progress{accent-color:var(--blue)}
 
 </style>
 <link rel="manifest" href="manifest.webmanifest">
@@ -1207,7 +1209,7 @@ function finishModal(){
  ${coachRefHTML()}
  <div class="row" style="margin-top:12px"><span class="spacer"></span><button class="btn hi" data-m="done">Done</button></div>`);
  const mb=$("#modal");
- {const sv=()=>{D.direction=+$("#crDir").value;D.coachRef={worked:$("#crWorked").value,diff:$("#crDiff").value};saveDraft();storeLocal(D,true)};["#crDir","#crWorked","#crDiff"].forEach(s=>{const e=$(s);if(e){e.oninput=sv;e.onchange=sv}})}
+ {const sv=()=>{D.direction=+$("#crDir").value;D.dirSet=true;D.coachRef={worked:$("#crWorked").value,diff:$("#crDiff").value};saveDraft();storeLocal(D,true)};["#crDir","#crWorked","#crDiff"].forEach(s=>{const e=$(s);if(e){e.oninput=sv;e.onchange=sv}})}
  mb.querySelector("[data-m=sp]").onclick=()=>{hideModal();saveToSharePoint(D)};
  mb.querySelector("[data-m=ics]").onclick=()=>addToCalendar(D);
  mb.querySelector("[data-m=card]").onclick=async()=>{if(await downloadDocx(cardFilename(D).replace(/\.html$/,".docx"),actionCardSheet(D),`${D.teacher} – action card`))toast("Action card downloaded as a Word document.",4000)};
@@ -1642,6 +1644,7 @@ function progressHTML(){
  ${wins.length?`<div class="kpis">${wins.slice(0,4).map(({x,c})=>`<div class="kpi"><span>${esc(x.m.label)}</span><b>${x.m.fmt(c.b)}</b><span class="tr ${c.trend}">${TREND[c.trend][0]} from ${x.m.fmt(c.a)}</span></div>`).join("")}</div>`:""}
  ${pd.series.length?`<h2>Growth in the classroom</h2><div class="charts">${pd.series.map(x=>{const c=changeOf(x.pts,x.m);return `<div class="chart card"><div class="row" style="align-items:baseline"><b>${esc(x.m.label)}</b>${c?`<span class="spacer"></span><span class="tr ${c.trend}">${TREND[c.trend][0]} ${TREND[c.trend][1]}</span>`:""}</div><div class="small muted">${esc(x.m.unit)}</div>${lineChartSVG(x.pts,x.m)}</div>`}).join("")}</div>`
   :`<div class="card"><p class="muted" style="margin:0">Charts appear once observations of at least a minute are recorded. Each new cycle adds a point.</p></div>`}
+ ${approachCardHTML(pd.list)}
  <h2>Action steps and follow-up</h2>
  <div class="steps-tl">${pd.cyc.map(c=>`<div class="stl"><div class="stl-h"><b>${esc(c.label)}</b> <span class="muted small">${esc(c.date)}</span></div>${c.goal?`<div class="small">Goal: <b>${esc(c.goal)}</b></div>`:""}
   ${c.steps.map(x=>`<div class="stl-s"><span class="lvdot" style="background:${LV_COL[x.level]||"#CBD5E1"}"></span><div><b>${esc(x.name)}</b> ${x.level?`<span class="lv ${x.level}">${levelName(x.level)}</span>`:`<span class="small muted">not rated yet</span>`}${x.look?`<div class="small muted">Look-for: ${esc(x.look)}${x.seenNext!=null?` · seen ${x.seenNext}× at the next visit`:""}</div>`:""}</div></div>`).join("")}
@@ -2209,11 +2212,29 @@ function selfReviewPrint(d){
 }
 
 /* ---------- relational prompts ---------- */
-const MOVES=[["Listening","Pause. Paraphrase: “So what I’m hearing is…”","“Tell me more about…”"],["Questioning","“What did you notice when…?”","“What were students doing while…?”"],["Clarifying","“When you say they were off task, what did that look like?”","“Which part of the lesson do you mean?”"],["Prompting","“What might you try if…?”","“What would it look like if every student…?”"],["Directing back to the evidence","“Let’s look at the tallies around minute 12…”","“The roster shows how many responded – what do you make of that?”"]];
+const DIR_LEVELS=["Facilitative","Mostly facilitative","Balanced","Mostly directive","Directive"];
+const dirTier=d=>d<=2?0:d===3?1:2;
+const DIR_NOTE=["The teacher leads. Ask, listen and wait – they name the strengths, the goal and the next step.","Share the thinking. Ask first, then offer an option or a model if the teacher is stuck.","You lead with clarity. Name what you saw, suggest the goal and technique, model it, then rehearse."];
+const MOVES=[
+ ["Listening",["Pause and let them finish. “Tell me more about…”","“So what I’m hearing is… Is that right?”"],["“Tell me more about…” then paraphrase back.","“It sounds like the main thing is… – shall we start there?”"],["“Let me check I’ve got this: …”","“Here’s what I’m hearing, and here’s what I noticed too.”"]],
+ ["Questioning",["“What did you notice when…?”","“What were students doing while…?”"],["“What did you notice when…?”","“What’s one thing you’d like more of?”"],["“Did you notice that… happened?”","“What do you think caused…?”"]],
+ ["Clarifying",["“When you say ‘off task’, what did that look like?”","“Which part of the lesson do you mean?”"],["“What would it look like if it worked?”","“Do you mean… or…?”"],["“Here’s what ‘everyone responding’ would look like: …”","“The part I mean is minute 12, when…”"]],
+ ["Prompting",["“What might you try if…?”","“What would it look like if every student…?”"],["“Some teachers try… or… – which fits your class?”","“What if you started with…?”"],["“I’d suggest… Let me show you, then you try it.”","“Next lesson, try exactly this: …”"]],
+ ["Directing back to the evidence",["“What do the tallies tell you about…?”","“What do you make of the roster?”"],["“Let’s look at minute 12 – what do you see?”","“The tallies show… what do you make of that?”"],["“At minute 12, 9 of 24 responded. That’s our starting point.”","“The evidence shows… so the goal is…”"]]
+];
+let movesOpen=false;
 function movesHTML(){
- const d=+D.direction||3;
- return `<details class="moves"><summary>Coaching moves – question stems</summary><div class="mgrid">${MOVES.map(m=>`<div><b>${m[0]}</b><div class="small">${m[1]}</div><div class="small">${m[2]}</div></div>`).join("")}</div>
- <div class="row small" style="margin-top:8px"><span>Facilitative</span><input type="range" min="1" max="5" step="1" data-f="direction" value="${d}" style="flex:1;max-width:260px" aria-label="Level of direction"><span>Directive</span><span class="muted">– adapt the level of direction to the teacher’s needs and goals</span></div></details>`;
+ const d=+D.direction||3,t=dirTier(d);
+ return `<details class="moves" ${movesOpen?"open":""}><summary>Coaching moves – ${DIR_LEVELS[d-1].toLowerCase()}</summary>
+ <div class="row small" style="margin-top:8px;gap:10px"><span>Facilitative</span><input type="range" min="1" max="5" step="1" data-dir value="${d}" style="flex:1;max-width:280px" aria-label="Level of direction"><span>Directive</span></div>
+ <p class="small" style="margin:6px 0 0"><b>${DIR_LEVELS[d-1]}:</b> ${DIR_NOTE[t]} <span class="muted">Adapt the level of direction to the teacher’s needs and goals – usually more directive early on, more facilitative as the practice becomes theirs.</span></p>
+ <div class="mgrid">${MOVES.map(m=>`<div><b>${m[0]}</b>${m[1+t].map(x=>`<div class="small">${x}</div>`).join("")}</div>`).join("")}</div></details>`;
+}
+function approachCardHTML(list){
+ const L=list.filter(s=>s.dirSet&&s.direction);if(!L.length)return "";
+ return `<h2>Coaching approach</h2><div class="card"><p class="small muted" style="margin-top:0">How directive each conversation was, from the coaching moves slider. Over time, conversations usually become more facilitative as the teacher takes ownership.</p>
+ <div class="appr">${L.map(s=>`<div class="ap"><div class="small muted">${esc(s.date||"")}</div><div class="apdots">${[1,2,3,4,5].map(i=>`<i class="${i===+s.direction?"on":""}"></i>`).join("")}</div><div class="small"><b>${DIR_LEVELS[s.direction-1]}</b></div></div>`).join("")}</div>
+ <div class="row small muted" style="margin-top:4px"><span>← facilitative</span><span class="spacer"></span><span>directive →</span></div></div>`;
 }
 
 /* ---------- goal: student change + priority link ---------- */
@@ -2267,6 +2288,8 @@ function bindAlign(all){
  all("[data-ck]",b=>b.onclick=()=>{const [id,i,k]=b.dataset.ck.split("|");D.check=D.check||{};D.check[id]=D.check[id]||{};D.check[id][i]=D.check[id][i]===k?undefined:k;if(!D.check[id][i])delete D.check[id][i];saveDraft();rerenderKeep()});
  all("[data-prio]",b=>b.onclick=()=>{D.priority=b.dataset.prio;saveDraft();rerenderKeep()});
  const at=$("#agTeacher");if(at){at.focus();at.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();actAlign("agreeteacher")}}}
+ all("[data-dir]",el=>{el.oninput=()=>{D.direction=+el.value;D.dirSet=true;saveDraft();const sm=el.closest(".moves");if(sm){const p=sm.querySelector("p b");if(p)p.textContent=DIR_LEVELS[D.direction-1]+":"}};el.onchange=()=>{movesOpen=true;rerenderKeep()}});
+ all("details.moves",d=>d.ontoggle=()=>{movesOpen=d.open});
  const cw=$("#cycleWeeks");if(cw)cw.oninput=()=>{settings.cycleWeeks=Math.max(1,+cw.value||3);persist("settings")};
 }
 function actAlign(x){
