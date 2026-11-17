@@ -425,6 +425,7 @@ button:focus-visible,.btn:focus-visible,a:focus-visible{outline:3px solid var(--
 .reccode{font-family:Consolas,monospace;font-size:26px;letter-spacing:3px;text-align:center;background:var(--b50);border:1px dashed var(--b300);border-radius:10px;padding:14px;color:var(--navy)}
 .appr{display:flex;gap:10px;flex-wrap:wrap}.ap{border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:120px}.apdots{display:flex;gap:4px;margin:6px 0}.apdots i{width:16px;height:8px;border-radius:4px;background:var(--b100)}.apdots i.on{background:var(--navy)}
 input[type=range],input[type=checkbox],input[type=radio],progress{accent-color:var(--blue)}
+.practicebar{background:#FFF7E8;border:2px dashed #E0A93B;border-radius:12px;padding:10px 14px;margin-bottom:14px}
 
 </style>
 <link rel="manifest" href="manifest.webmanifest">
@@ -554,9 +555,10 @@ const GOALS = {
    Blueprint – v3 (formerly Coaching Debrief Playbook)
    ===================================================================== */
 const APP_VERSION = "3.0";
+let PRACTICE=false;const MEM={};
 const LS = {
- get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
- set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+ get(k,d){if(PRACTICE&&k in MEM)return JSON.parse(MEM[k]);try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+ set(k,v){if(PRACTICE){MEM[k]=JSON.stringify(v);return true}try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
 };
 const KEYS = {videos:"cdp_videos", moments:"cdp_moments", saved:"cdp_saved", custom:"cdp_custom", edits:"cdp_edits", settings:"cdp_settings", draft:"cdp_draft", backup:"cdp_lastBackup", changed:"cdp_lastChange", nuance:"cdp_nuance"};
 let videos = LS.get(KEYS.videos,{});
@@ -925,7 +927,7 @@ function followupModal(id){
  mb.querySelector("[data-m=observe]").onclick=()=>{hideModal();nextCycle(c)};
 }
 function nextCycle(c){
- D=norm(blank());D.teacher=c.teacher;D.coach=c.coach;D.cls=c.cls;D.prev=c.id;D.obs=blankObs();step=0;ctxOpen=false;{const pg=(c.goals||[]).find(x=>x.id===c.goal);if(pg)D.obsFocus=[pg.pid?{type:"goal",id:pg.pid}:pg.macro?{type:"macro",id:pg.macro}:null].filter(Boolean)}saveDraft();if(isArchived(D.teacher))setArchived(D.teacher,false);if(agreementFor(D.teacher)){setView("debrief")}else{agreeT=D.teacher;setView("agree");toast(`Set up the coaching agreement with ${esc(D.teacher)} first.`,4000)}
+ D=norm(blank());D.teacher=c.teacher;D.coach=c.coach;D.cls=c.cls;D.prev=c.id;D.obs=blankObs();step=0;ctxOpen=false;{const pg=(c.goals||[]).find(x=>x.id===c.goal);if(pg)D.obsFocus=[pg.pid?{type:"goal",id:pg.pid}:pg.macro?{type:"macro",id:pg.macro}:null].filter(Boolean)}{const ag=agreementFor(c.teacher),src=(c.model&&c.model!=="one")?c:ag;if(src&&src.model){D.model=src.model;D.members=src.members||""}}saveDraft();if(isArchived(D.teacher))setArchived(D.teacher,false);if(agreementFor(D.teacher)){setView("debrief")}else{agreeT=D.teacher;setView("agree");toast(`Set up the coaching agreement with ${esc(D.teacher)} first.`,4000)}
  toast(`New cycle started for ${esc(c.teacher)}. Last cycle’s action steps are shown for reference.`,5000);
 }
 
@@ -963,6 +965,7 @@ function homeHTML(){
  <div class="grid g2" style="margin-top:16px">
   <button class="tile" data-go="library"><b>Technique library</b><span>${Object.keys(T).length} step-by-step plays, organised by VTLM 2.0</span></button>
   <button class="tile" data-act="walkstart"><b>Learning walk</b><span>Short visits across many rooms – see how often whole-school practices happen</span></button>
+  <button class="tile" data-act="practice"><b>Practice cycle</b><span>Try a whole cycle with a made-up lesson – nothing is saved</span></button>
   <button class="tile" data-go="saved"><b>Teachers</b><span>${new Set(saved.map(s=>s.teacher).filter(Boolean)).size} teachers · coaching cycles, follow-ups and patterns</span></button>
  </div>`;
 }
@@ -973,6 +976,7 @@ function moreHTML(){
   <button class="tile" data-go="resources"><b>VTLM 2.0 &amp; PCMS resources</b><span>Official guides and placemats</span></button>
   <button class="tile" data-act="spbackup"><b>Back up now</b><span>Save a copy of everything to your SharePoint coaching folder (or download it)</span></button>
   <button class="tile" data-act="walkstart"><b>Learning walk</b><span>Short visits across many rooms, added to the school’s patterns</span></button>
+  <button class="tile" data-act="practice"><b>Practice cycle</b><span>For professional learning: a guided cycle with a made-up lesson. Nothing is saved</span></button>
   <button class="tile" data-act="termreportgo"><b>Term report</b><span>A Word summary of coaching, growth and learning walks for leaders</span></button>
   ${saved.some(s=>s.sample)?`<button class="tile" data-act="rmsample"><b>Remove sample data</b><span>Delete the made-up practice teachers</span></button>`:`<button class="tile" data-act="sample"><b>Practice with sample teachers</b><span>Load three made-up teachers to explore progress and patterns – great for PL</span></button>`}
  </div>`;
@@ -1040,8 +1044,8 @@ function ctxHTML(){
   <div><label class="f">Class</label><input class="t" data-f="cls" value="${esc(D.cls)}"></div>
   <div><label class="f">Coach</label><input class="t" data-f="coach" value="${esc(D.coach)}"></div>
   <div class="wide"><label class="f">Lesson</label><input class="t" data-f="focus" value="${esc(D.focus)}"></div>
-  <div><label class="f">Coaching model</label><select class="t" data-f="model">${MODELS.map(([k,l])=>`<option value="${k}" ${D.model===k?"selected":""}>${l}</option>`).join("")}</select></div>
-  <div><label class="f">Group or team members</label><input class="t" data-f="members" value="${esc(D.members||"")}" placeholder="For group or team coaching"></div>
+  ${extraOn("model")?`<div><label class="f">Coaching model</label><select class="t" data-f="model">${MODELS.map(([k,l])=>`<option value="${k}" ${D.model===k?"selected":""}>${l}</option>`).join("")}</select></div>
+  <div><label class="f">Group or team members</label><input class="t" data-f="members" value="${esc(D.members||"")}" placeholder="Names, separated by commas"></div>`:""}
   <div class="wide" style="text-align:right"><button class="btn sm" data-act="ctxdone">Done</button></div>
  </div>`;
 }
@@ -1203,7 +1207,7 @@ function finishModal(){
  setTimeout(()=>autoBackup("cycle"),300);
  showModal(`<h2>All saved ✓</h2><p class="small muted">This coaching conversation with <b>${esc(D.teacher)}</b> is saved in this browser and listed under Teachers. <span id="autoBk"></span></p>
  <div class="finrow"><button class="fbtn" data-m="sp"><b>Save all to SharePoint</b><span>The full conversation and the action card, in ${esc(D.teacher)}’s folder</span></button>
- <button class="fbtn" data-m="card"><b>Download the teacher’s action card</b><span>Word document – goal, technique, steps, look-for, follow-up</span></button>
+ <button class="fbtn" data-m="card"><b>${membersOf(D).length?`Download ${membersOf(D).length} action cards`:"Download the teacher’s action card"}</b><span>${membersOf(D).length?`One Word document with a card for each member: ${esc(membersOf(D).join(", "))}`:"Word document – goal, technique, steps, look-for, follow-up"}</span></button>
  <button class="fbtn" data-m="ics" ${followupDate(D)?"":"disabled"}><b>Add follow-up to calendar</b><span>${followupDate(D)?`An Outlook invite for ${esc(followupDate(D))}`:"Add a follow-up date in step 5 first"}</span></button>
  <button class="fbtn" data-m="plan"><b>Download the full plan</b><span>Word document – the coach’s record with technique sheets</span></button></div>
  ${coachRefHTML()}
@@ -1212,7 +1216,7 @@ function finishModal(){
  {const sv=()=>{D.direction=+$("#crDir").value;D.dirSet=true;D.coachRef={worked:$("#crWorked").value,diff:$("#crDiff").value};saveDraft();storeLocal(D,true)};["#crDir","#crWorked","#crDiff"].forEach(s=>{const e=$(s);if(e){e.oninput=sv;e.onchange=sv}})}
  mb.querySelector("[data-m=sp]").onclick=()=>{hideModal();saveToSharePoint(D)};
  mb.querySelector("[data-m=ics]").onclick=()=>addToCalendar(D);
- mb.querySelector("[data-m=card]").onclick=async()=>{if(await downloadDocx(cardFilename(D).replace(/\.html$/,".docx"),actionCardSheet(D),`${D.teacher} – action card`))toast("Action card downloaded as a Word document.",4000)};
+ mb.querySelector("[data-m=card]").onclick=async()=>{const c=cardDocFor(D);if(await downloadDocx(c.name,c.html,c.title))toast(membersOf(D).length?"Action cards downloaded as one Word document.":"Action card downloaded as a Word document.",4000)};
  mb.querySelector("[data-m=plan]").onclick=async()=>{if(await downloadDocx(convFilename(D).replace(/\.html$/,".docx"),planSheet(D),`${D.teacher} – coaching conversation`,norm(JSON.parse(JSON.stringify(D)))))toast("Full plan downloaded as a Word document.",4000)};
  mb.querySelector("[data-m=done]").onclick=()=>{hideModal();setView("home")};
 }
@@ -1248,7 +1252,7 @@ function growthData(d){
  return {pc,goal:g?g.text:"",rows,steps,up,total:rows.length,hasObs:!!(a&&b)};
 }
 function teacherJourney(name){
- return saved.filter(s=>(s.teacher||"")===name).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map(s=>{
+ return saved.filter(s=>(s.teacher||"")===name||inGroup(s,name)).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map(s=>{
   const st=s.obs&&obsElapsed(s.obs)>=60?obsStats(s.obs):null;const g=(s.goals||[]).find(x=>x.id===s.goal);
   const lv=(s.chosen||[]).map(id=>latestLevel(s,id)).filter(Boolean);
   return {id:s.id,date:s.date,goal:g?g.text:"",techs:(s.chosen||[]).filter(id=>T[id]).map(id=>T[id].n),otr:st?st.otrPerMin:null,level:lv.length?lv[lv.length-1]:""}});
@@ -1463,6 +1467,7 @@ function settingsHTML(){
  return `<div class="row"><button class="btn alt sm" data-go="more">← More</button></div><h1 style="margin-top:10px">Settings</h1>
  <p class="lead">Your school’s branding, playbook, SharePoint saving and backups. Everything you add lives in this browser – download a backup file regularly.</p>
  ${brandingHTML()}
+ ${simpleSettingsHTML()}
  ${focusSettingsHTML()}
  <div class="card" style="margin-top:14px"><h2>School playbook</h2>
   <div><div class="small muted">Mark techniques with “☆ Add to school playbook” on any technique page. Playbook techniques are badged, weighted first in the best bets, and can be printed as a staff booklet or wall cards.</div></div>
@@ -1578,7 +1583,7 @@ function brandingHTML(){const t=settings.theme||THEME_DEFAULT,lowC=contrast(t.da
    ===================================================================== */
 let curTeacher="";
 const tKey=s=>s.teacher||"(No teacher name)";
-function cyclesOf(name){return saved.filter(s=>tKey(s)===name).map(norm).sort((a,b)=>(a.date||"").localeCompare(b.date||"")||((a.prev===b.id)?1:(b.prev===a.id)?-1:0))}
+function cyclesOf(name){return saved.filter(s=>tKey(s)===name||inGroup(s,name)).map(norm).sort((a,b)=>(a.date||"").localeCompare(b.date||"")||((a.prev===b.id)?1:(b.prev===a.id)?-1:0))}
 const PROG_MEASURES=[
  {k:"otr",label:"Opportunities to respond",unit:"per minute",dir:1,val:s=>s.otrPerMin,fmt:v=>v.toFixed(1)},
  {k:"whole",label:"Whole-class responses",unit:"per 10 minutes",dir:1,val:s=>s.mins?s.whole/s.mins*10:null,fmt:v=>v.toFixed(1)},
@@ -1619,7 +1624,7 @@ function dueInfo(list){const last=list[list.length-1];const dates=(last.chosen||
  const td=today(),d=dates[0];if(d<td)return {cls:"late",txt:"Follow-up overdue · "+d};const soon=ymdL(new Date(Date.now()+7*864e5));return d<=soon?{cls:"soon",txt:"Follow-up due "+d}:{cls:"ok",txt:"Follow-up "+d}}
 /* ---------- Teachers tab: cards ---------- */
 function teacherCardsHTML(){
- const allNames=[...new Set(saved.map(tKey))].sort();
+ const allNames=[...new Set(saved.map(tKey).concat(saved.flatMap(s=>membersOf(s))))].sort();
  if(!allNames.length)return `<p class="muted">Nothing saved yet. Finish a coaching cycle and it will appear here.</p>`;
  const names=allNames.filter(n=>showArchived?isArchived(n):!isArchived(n));
  const all=names.map(n=>({n,pd:progressData(n)}));
@@ -1646,7 +1651,7 @@ function progressHTML(){
   :`<div class="card"><p class="muted" style="margin:0">Charts appear once observations of at least a minute are recorded. Each new cycle adds a point.</p></div>`}
  ${approachCardHTML(pd.list)}
  <h2>Action steps and follow-up</h2>
- <div class="steps-tl">${pd.cyc.map(c=>`<div class="stl"><div class="stl-h"><b>${esc(c.label)}</b> <span class="muted small">${esc(c.date)}</span></div>${c.goal?`<div class="small">Goal: <b>${esc(c.goal)}</b></div>`:""}
+ <div class="steps-tl">${pd.cyc.map(c=>`<div class="stl"><div class="stl-h"><b>${esc(c.label)}</b> <span class="muted small">${esc(c.date)}</span>${membersOf(c.s).length?` <span class="pill">${esc(modelName(c.s.model))}${tKey(c.s)!==curTeacher?": "+esc(c.s.teacher):""}</span>`:""}</div>${c.goal?`<div class="small">Goal: <b>${esc(c.goal)}</b></div>`:""}
   ${c.steps.map(x=>`<div class="stl-s"><span class="lvdot" style="background:${LV_COL[x.level]||"#CBD5E1"}"></span><div><b>${esc(x.name)}</b> ${x.level?`<span class="lv ${x.level}">${levelName(x.level)}</span>`:`<span class="small muted">not rated yet</span>`}${x.look?`<div class="small muted">Look-for: ${esc(x.look)}${x.seenNext!=null?` · seen ${x.seenNext}× at the next visit`:""}</div>`:""}</div></div>`).join("")}
   <div class="row" style="gap:6px;margin-top:6px"><button class="btn sm alt" data-followup="${c.s.id}">Record follow-up</button>${followupDate(c.s)?`<button class="btn sm alt" data-ics="${c.s.id}">Add follow-up to calendar</button>`:""}<button class="btn sm alt" data-open="${c.s.id}">Open</button><button class="btn sm alt" data-spsaved="${c.s.id}">Save to SharePoint</button><button class="btn ghost sm" data-del="${c.s.id}">Delete</button></div></div>`).join("")}</div>
  <div class="row" style="margin-top:12px"><span class="spacer"></span><button class="btn hi" data-nextcycle="${pd.list[pd.list.length-1].id}">Start next cycle with ${esc(curTeacher)}</button></div>`}
@@ -2040,7 +2045,7 @@ function sheetSettingsHTML(){
 
 /* ---------- backup reminder ---------- */
 const BACKUP_DAYS=14;
-function backupDue(){
+function backupDue(){if(PRACTICE)return false;
  const hasData=saved.length||walks.length||Object.keys(custom).length||Object.keys(edits).length||Object.keys(videos).length||(settings.playbook||[]).length;
  if(!hasData)return false;
  let start=LS.get("cdp_dataSince",0);if(!start){start=Date.now();LS.set("cdp_dataSince",start)}
@@ -2128,13 +2133,14 @@ function agreeHTML(){
  <h1 style="margin-top:8px">Coaching agreement – ${esc(t)}</h1>
  <p class="lead">Set up the relationship and the practical arrangements before the first cycle. It’s done once, and reviewed at an agreed point.</p>
  <div class="card"><h3>What we agree</h3>${AGREE_ITEMS.map(([k,l])=>`<label class="chk" style="display:flex;gap:8px;margin:6px 0"><input type="checkbox" data-ag="items.${k}" ${a.items[k]?"checked":""}> ${l}</label>`).join("")}</div>
- <div class="card" style="margin-top:12px"><h3>How the teacher would like to be coached</h3>
+ ${extraOn("moves")?`<div class="card" style="margin-top:12px"><h3>How the teacher would like to be coached</h3>
   <div class="row small" style="gap:10px"><span>Facilitative</span><input type="range" min="1" max="5" step="1" data-ag="prefDir" value="${+a.prefDir||3}" style="flex:1;max-width:320px" aria-label="Preferred coaching style"><span>Directive</span><b id="prefLbl" style="min-width:150px">${DIR_LEVELS[(+a.prefDir||3)-1]}</b></div>
   <p class="small muted" style="margin:6px 0 8px">Facilitative: the teacher leads and the coach asks questions. Directive: the coach names what they saw, suggests the next step and models it. Most people want something in between, and it can change as the practice becomes theirs.</p>
-  <label class="f">Anything else about how you like to receive feedback</label><input class="t" data-ag="prefNote" value="${esc(a.prefNote||"")}" placeholder="e.g. Show me first, then let me try it; I like time to think before answering"></div>
+  <label class="f">Anything else about how you like to receive feedback</label><input class="t" data-ag="prefNote" value="${esc(a.prefNote||"")}" placeholder="e.g. Show me first, then let me try it; I like time to think before answering"></div>`:""}
  <div class="card" style="margin-top:12px"><h3>Arrangements</h3><div class="ldgrid">
   <div><label class="f">Coach</label><input class="t" data-ag="coach" value="${esc(a.coach)}"></div>
-  <div><label class="f">Coaching model</label><select class="t" data-ag="model">${MODELS.map(([k,l])=>`<option value="${k}" ${a.model===k?"selected":""}>${l}</option>`).join("")}</select></div>
+  ${extraOn("model")?`<div><label class="f">Coaching model</label><select class="t" data-ag="model">${MODELS.map(([k,l])=>`<option value="${k}" ${a.model===k?"selected":""}>${l}</option>`).join("")}</select></div>
+  <div><label class="f">Group or team members</label><input class="t" data-ag="members" value="${esc(a.members||"")}" placeholder="Names, separated by commas"></div>`:""}
   <div><label class="f">Cycle length (weeks)</label><input class="t" type="number" min="1" max="10" data-ag="weeks" value="${esc(a.weeks)}"></div>
   <div><label class="f">Meeting time</label><input class="t" data-ag="meeting" value="${esc(a.meeting)}" placeholder="e.g. Wednesdays 3:30pm"></div>
   <div><label class="f">Review the relationship after cycle</label><input class="t" type="number" min="1" max="12" data-ag="review" value="${esc(a.review)}"></div>
@@ -2150,7 +2156,7 @@ function agreeSheet(t){
  return `<div class="page">${head("Coaching agreement",t+" · "+a.date)}
  <p>Instructional coaching is job-embedded professional learning. It works through cycles of evidence gathering, goal setting, learning, practice, feedback and refinement, focused on the change we want to see in students.</p>
  <h2>What we agree</h2><table>${AGREE_ITEMS.map(([k,l])=>`<tr><td style="width:8%;text-align:center">${a.items[k]?"✓":"☐"}</td><td>${esc(l)}</td></tr>`).join("")}</table>
- <h2>Arrangements</h2><table><tr><th style="width:34%">Teacher</th><td>${esc(t)}</td></tr><tr><th>Coach</th><td>${esc(a.coach)}</td></tr><tr><th>Coaching model</th><td>${esc(modelName(a.model))}</td></tr><tr><th>How I’d like to be coached</th><td>${DIR_LEVELS[(+a.prefDir||3)-1]}${a.prefNote?` – ${esc(a.prefNote)}`:""}</td></tr><tr><th>Cycle length</th><td>${esc(a.weeks)} weeks</td></tr><tr><th>Meeting time</th><td>${esc(a.meeting)}</td></tr><tr><th>School priority / professional learning</th><td>${esc(a.priority)}</td></tr><tr><th>Review the relationship</th><td>After cycle ${esc(a.review)}</td></tr>${a.notes?`<tr><th>Also agreed</th><td>${esc(a.notes).replace(/\n/g,"<br>")}</td></tr>`:""}</table>
+ <h2>Arrangements</h2><table><tr><th style="width:34%">Teacher</th><td>${esc(t)}</td></tr><tr><th>Coach</th><td>${esc(a.coach)}</td></tr><tr><th>Coaching model</th><td>${esc(modelName(a.model))}${a.model!=="one"&&a.members?": "+esc(a.members):""}</td></tr><tr><th>How I’d like to be coached</th><td>${DIR_LEVELS[(+a.prefDir||3)-1]}${a.prefNote?` – ${esc(a.prefNote)}`:""}</td></tr><tr><th>Cycle length</th><td>${esc(a.weeks)} weeks</td></tr><tr><th>Meeting time</th><td>${esc(a.meeting)}</td></tr><tr><th>School priority / professional learning</th><td>${esc(a.priority)}</td></tr><tr><th>Review the relationship</th><td>After cycle ${esc(a.review)}</td></tr>${a.notes?`<tr><th>Also agreed</th><td>${esc(a.notes).replace(/\n/g,"<br>")}</td></tr>`:""}</table>
  <h2>The coaching cycle</h2><table><tr><th>Agreement</th><th>Identify</th><th>Learn</th><th>Implement and improve</th></tr><tr><td>The relationship and arrangements (this page)</td><td>Classroom evidence and a goal for students</td><td>Explanation, modelling, rehearsal and feedback</td><td>Use it in class, review and refine with support</td></tr></table>
  ${(a.reviews||[]).length?`<h2>Reviews</h2><table><tr><th>Date</th><th>Decision</th><th>Notes</th></tr>${a.reviews.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.decision)}</td><td>${esc(r.note)}</td></tr>`).join("")}</table>`:""}
  <h2>Signed</h2><table><tr><th style="width:50%">Teacher</th><th>Coach</th></tr><tr><td style="height:40px"></td><td></td></tr></table></div>`;
@@ -2158,7 +2164,7 @@ function agreeSheet(t){
 /* nudges shown on the observation screen */
 function alignNudges(){
  if(!(D.teacher||"").trim())return "";
- const a=agreementFor(D.teacher),out=[];const rn=renewNudge();if(rn)out.push(rn);
+ const a=agreementFor(D.teacher),out=[];const gn=groupNudge();if(gn)out.push(gn);const rn=renewNudge();if(rn)out.push(rn);
  if(!a)out.push(`<div class="anudge"><span>No coaching agreement with <b>${esc(D.teacher)}</b> yet.</span><button class="btn alt sm" data-act="agreeopen">Set it up</button></div>`);
  const pc=D.prev?saved.find(s=>s.id===D.prev):null;
  if(pc&&pc.date&&D.date){const gap=daysBetween(pc.date,D.date),w=cycleWeeks(D.teacher);
@@ -2169,6 +2175,7 @@ function alignNudges(){
 
 /* ---------- evidence types (Identify) ---------- */
 function evidenceHTML(){
+ if(!extraOn("evidence"))return "";
  const ev=D.evidence||["live"];
  return `<div class="card evcard"><div class="row"><h3 style="margin:0">Evidence for this cycle</h3><span class="small muted">choose all that apply</span></div>
  <div class="evchips">${EVIDENCE.map(([k,l])=>`<button class="evchip ${ev.includes(k)?"on":""}" data-ev="${k}">${ev.includes(k)?"✓ ":""}${l}</button>`).join("")}</div>
@@ -2228,6 +2235,7 @@ const MOVES=[
 ];
 let movesOpen=false;
 function movesHTML(){
+ if(!extraOn("moves"))return "";
  const ag=agreementFor(D.teacher),pref=ag&&+ag.prefDir;
  if(!D.dirSet&&pref)D.direction=pref;
  const d=+D.direction||3,t=dirTier(d);
@@ -2237,6 +2245,7 @@ function movesHTML(){
  <div class="mgrid">${MOVES.map(m=>`<div><b>${m[0]}</b>${m[1+t].map(x=>`<div class="small">${x}</div>`).join("")}</div>`).join("")}</div></details>`;
 }
 function approachCardHTML(list){
+ if(!extraOn("moves"))return "";
  const L=list.filter(s=>s.dirSet&&s.direction);if(!L.length)return "";
  return `<h2>Coaching approach</h2><div class="card"><p class="small muted" style="margin-top:0">How directive each conversation was, from the coaching moves slider. Over time, conversations usually become more facilitative as the teacher takes ownership.</p>
  <div class="appr">${L.map(s=>`<div class="ap"><div class="small muted">${esc(s.date||"")}</div><div class="apdots">${[1,2,3,4,5].map(i=>`<i class="${i===+s.direction?"on":""}"></i>`).join("")}</div><div class="small"><b>${DIR_LEVELS[s.direction-1]}</b></div></div>`).join("")}</div>
@@ -2245,6 +2254,7 @@ function approachCardHTML(list){
 
 /* ---------- goal: student change + priority link ---------- */
 function priorityHTML(){
+ if(!extraOn("priority"))return "";
  if(!curGoal())return "";
  const a=agreementFor(D.teacher),f=focusTech(),opts=[a&&a.priority,f?"School focus: "+T[f].n:""].filter(Boolean);
  return `<div class="card" style="margin-top:12px"><label class="f">Link to the school priority or professional learning</label>
@@ -2254,6 +2264,7 @@ function priorityHTML(){
 
 /* ---------- coach reflection (finish) ---------- */
 function coachRefHTML(){
+ if(!extraOn("reflect"))return "";
  const r=D.coachRef||{};
  return `<details class="coachref"><summary>Coach reflection – just for you (optional)</summary>
  <label class="f">How directive was the conversation?</label><div class="row small"><span>Facilitative</span><input type="range" min="1" max="5" step="1" id="crDir" value="${+D.direction||3}" style="flex:1"><span>Directive</span></div>
@@ -2301,12 +2312,12 @@ function bindAlign(all){
 function actAlign(x){
  if(x==="agreeopen"){agreeT=D.teacher;setView("agree");return true}
  if(x==="agreeteacher"){const n=($("#agTeacher").value||"").trim();if(!n){toast("Enter the teacher’s name first.");return true}
-  D.teacher=n;if(isArchived(n))setArchived(n,false);const a=agreementFor(n);if(a&&!D.coach)D.coach=a.coach||"";if(a&&a.model)D.model=a.model;ctxOpen=false;saveDraft();agreeT=n;
+  D.teacher=n;if(isArchived(n))setArchived(n,false);const a=agreementFor(n);if(a&&!D.coach)D.coach=a.coach||"";if(a&&a.model){D.model=a.model;if(a.members)D.members=a.members}ctxOpen=false;saveDraft();agreeT=n;
   if(a){toast(`Agreement with ${esc(n)} is in place – on to Identify.`);step=0;setView("debrief")}else setView("agree");return true}
  if(x==="agreeback"){if(!agreeT&&!D.teacher){setView("home");return true}setView(D.teacher&&akey(D.teacher)===akey(agreeT)?"debrief":"saved");return true}
  if(x==="agreesave"){const t=agreeT||D.teacher;const isNew=!agreements[akey(t)];if(isNew){agreements[akey(t)]=agreeBlank(t);persistAgreements()}const a=agreements[akey(t)];
   delete a.renew;persistAgreements();
-  if(akey(D.teacher)===akey(t)){if(!D.coach)D.coach=a.coach||"";if(a.model&&(!D.model||D.model==="one"))D.model=a.model;saveDraft();if(isNew)toast("Coaching agreement saved.");step=0;setView("debrief")}else{toast("Coaching agreement saved.");setView("saved")}return true}
+  if(akey(D.teacher)===akey(t)){if(!D.coach)D.coach=a.coach||"";if(a.model&&(!D.model||D.model==="one")){D.model=a.model;if(a.members)D.members=a.members}saveDraft();if(isNew)toast("Coaching agreement saved.");step=0;setView("debrief")}else{toast("Coaching agreement saved.");setView("saved")}return true}
  if(x==="agreedoc"){const t=agreeT||D.teacher;if(!agreements[akey(t)]){agreements[akey(t)]=agreeBlank(t);persistAgreements()}downloadDocx(`${today()} ${cleanName(t)} – coaching agreement.docx`,agreeSheet(t),`${t} – coaching agreement`).then(ok=>ok&&toast("Agreement downloaded as a Word document.",4000));return true}
  if(x==="addreview"){const t=agreeT||D.teacher,a=agreements[akey(t)];if(!a)return true;a.reviews=a.reviews||[];a.reviews.push({date:today(),decision:$("#rvDec").value,note:$("#rvNote").value});delete a.renew;persistAgreements();rerenderKeep();toast("Review recorded.");return true}
  return false;
@@ -2318,6 +2329,7 @@ function actAlign(x){
 
 /* ---------- automatic SharePoint backup ---------- */
 async function autoBackup(reason){
+ if(PRACTICE)return;
  if(settings.autoBackup===false||!fsSupported())return;
  try{const r=await loadRoot();if(!r||!(await permitted(r,false)))return;
   await writeTo(["Backups"],`Blueprint backup ${today()}.json`,new Blob([JSON.stringify(backupData(),null,1)],{type:"application/json"}));
@@ -2453,6 +2465,90 @@ function actExtra(x){
 }
 
 /* =====================================================================
+   SIMPLE MODE · GROUP AND TEAM CYCLES · PRACTICE CYCLE
+   ===================================================================== */
+
+/* ---------- simple mode ---------- */
+const EXTRAS=[["moves","Coaching moves","Question stems, the facilitative–directive slider and the teacher’s coaching preference"],["evidence","Evidence types","Video, student work and data alongside a live observation"],["model","Coaching models and groups","Small-group, team and network cycles with members"],["priority","School priority link","Link each goal to the school priority or professional learning"],["reflect","Coach reflection","A private note for the coach on the Finish screen"]];
+if(settings.simple===undefined){settings.simple=!(saved.length||Object.keys(agreements).length);persist("settings")}
+const extraOn=k=>!settings.simple&&(settings.extras||{})[k]!==false;
+function simpleSettingsHTML(){
+ return `<div class="card" style="margin-top:14px"><h2>Simple mode</h2><p class="small muted" style="margin-top:0">Simple mode shows only the core path: agreement, observe, goal, technique, rehearse and follow up. Turn it off to choose which extras to show. Nothing already recorded is lost either way.</p>
+ <label class="chk" style="display:flex;gap:8px"><input type="checkbox" id="simpleOn" ${settings.simple?"checked":""}> <b>Simple mode</b></label>
+ ${settings.simple?"":`<div style="margin-top:10px">${EXTRAS.map(([k,n,d])=>`<label class="chk" style="display:flex;gap:8px;margin:6px 0"><input type="checkbox" data-extra="${k}" ${extraOn(k)?"checked":""}> <span><b>${n}</b> <span class="small muted">– ${d}</span></span></label>`).join("")}</div>`}</div>`;
+}
+
+/* ---------- group and team cycles ---------- */
+const membersOf=d=>(d&&d.model&&d.model!=="one")?String(d.members||"").split(/[,;\n]/).map(x=>x.trim()).filter(Boolean):[];
+const inGroup=(s,name)=>membersOf(s).some(m=>akey(m)===akey(name));
+const asMember=(d,m)=>Object.assign({},d,{teacher:m});
+function cardDocFor(d){
+ const M=membersOf(d);
+ if(!M.length)return {name:cardFilename(d).replace(/\.html$/,".docx"),html:actionCardSheet(d),title:`${d.teacher} – action card`};
+ return {name:`${d.date||today()} ${cleanName(d.teacher)||"Group"} – action cards.docx`,html:M.map(m=>actionCardSheet(asMember(d,m))).join(""),title:`${d.teacher} – action cards`};
+}
+function groupNudge(){
+ if(!extraOn("model")||!D.model||D.model==="one")return "";
+ const M=membersOf(D);
+ return M.length?`<div class="anudge"><span><b>${esc(modelName(D.model))}</b> – one shared goal for ${M.map(esc).join(", ")}. Each member gets their own action card, and the cycle shows on each person’s progress page.</span></div>`
+  :`<div class="anudge"><span><b>${esc(modelName(D.model))}</b> – add the members’ names so each one gets an action card.</span><button class="btn alt sm" data-act="ctxedit">Add members</button></div>`;
+}
+
+/* ---------- practice cycle ---------- */
+const PRACTICE_T="Mr Jordan (practice)";
+const PRACTICE_STEPS={
+ agree:["Set up the agreement with Mr Jordan. Talk through each line, ask how he’d like to be coached, then choose Save – go to Identify.","You’re in your third year of teaching. You’re keen, a bit nervous about being observed, and you like to see an example before you try something."],
+ d0:["The lesson has been observed for you: 20 minutes of Year 4 maths on equivalent fractions. Read the tallies and the evidence summary, and open “Note” to read the three notes – what stands out? Tap a tally to see how it works, then go to step 1.","You felt the lesson went well. Students were engaged with the fraction strips."],
+ d1:["Name one or two things that worked and the effect on students. For example: “You modelled 1/2 = 2/4 with fraction strips under the visualiser, so students could see why they’re equal.”","Listen. Say what you were trying to do with the fraction strips."],
+ d2:["Ask an open question and record Mr Jordan’s own words. For example: “What did you notice about who was answering?”","Say: “It went well, but now I think about it, the same five students answered most of the questions.”"],
+ d3:["Agree one goal, written as what students will do. For example: “Every student shows an answer before anyone shares.”","Agree with a goal about hearing from every student – you’d like to know who has it before moving on."],
+ d4:["Choose one technique for the goal. Mini whiteboards or Cold call both fit. Open the play to check its steps.","Say which one you’d feel comfortable trying this week."],
+ d5:["Walk through the key ingredients, model it, then your partner rehearses it out loud. Tick the ingredients you saw, write the action step, then choose Finish and download the action card to see what the teacher gets.","Rehearse it as if the class is in front of you. Miss one ingredient on purpose so your coach can give feedback."],
+ other:["Have a look around – everything works as normal. When you’re done, choose Exit practice to return to your own records.",""]
+};
+function practiceObs(){
+ const o=blankObs();o.elapsed=1200;
+ const plan=[["volunteer",9],["choral",2],["coldCall",1],["turnTalk",1],["mwb",1],["check",1]];
+ plan.forEach(([k,n])=>{o.counts[k]=n;for(let i=0;i<n;i++)o.events.push({k,t:Math.round(60+(i+0.5)*(1080/n))})});
+ o.events.sort((a,b)=>a.t-b.t);
+ o.notes=[{t:150,type:"noticing",macro:"",text:"Modelled 1/2 = 2/4 with fraction strips under the visualiser. Students copied the strips correctly."},
+  {t:560,type:"noticing",macro:"",text:"“Who can tell me another fraction equal to 1/2?” – the same five students put their hands up each time."},
+  {t:900,type:"noticing",macro:"",text:"One mini whiteboard check at minute 15: 14 of 24 boards correct. The lesson moved on."}];
+ return o;
+}
+function practiceIntro(){
+ showModal(`<h2>Practice cycle</h2><p>Run a whole coaching cycle with a made-up lesson: <b>Mr Jordan’s Year 4 maths lesson on equivalent fractions</b>. It’s designed for a professional learning session – work in pairs, one as the coach and one as Mr Jordan.</p>
+ <ul class="small"><li>A guide at the top of each screen says what to do and gives the teacher a line to play.</li><li>The observation is filled in for you.</li><li><b>Nothing is saved.</b> Your own records are hidden while you practise and come back when you choose Exit practice.</li></ul>
+ <div class="row" style="margin-top:12px"><span class="spacer"></span><button class="btn ghost" data-mclose>Cancel</button><button class="btn hi" id="prGo">Start the practice cycle</button></div>`);
+ $("#prGo").onclick=()=>{hideModal();startPractice()};
+}
+function startPractice(){
+ clearTimeout(draftTimer);LS.set(KEYS.draft,D);try{if(worthSaving(D))storeLocal(D,true)}catch(e){}
+ PRACTICE=true;
+ saved=[];walks=[];agreements={};W=null;schoolOn=false;
+ settings=Object.assign({},settings,{archived:[]});delete settings.pinHash;
+ D=norm(blank());D.teacher=PRACTICE_T;D.coach=settings.walker||"";D.cls="Year 4";D.focus="Year 4 maths – equivalent fractions";D.obs=practiceObs();
+ agreeT=D.teacher;step=0;ctxOpen=false;setView("agree");
+}
+function practiceBarHTML(){
+ const k=view==="agree"?"agree":view==="debrief"?"d"+step:"other",s=PRACTICE_STEPS[k]||PRACTICE_STEPS.other;
+ return `<div class="practicebar"><div class="row"><b>Practice cycle</b><span class="pill">Nothing is saved</span><span class="small muted">Mr Jordan · Year 4 maths · equivalent fractions</span><span class="spacer"></span><button class="btn alt sm" data-act="practiceexit">Exit practice</button></div>
+ <div class="small" style="margin-top:6px"><b>Coach:</b> ${esc(s[0])}</div>${s[1]?`<div class="small" style="margin-top:4px"><b>Playing Mr Jordan:</b> ${esc(s[1])}</div>`:""}</div>`;
+}
+
+/* ---------- events ---------- */
+function bindModes(all){
+ const so=$("#simpleOn");if(so)so.onchange=()=>{settings.simple=so.checked;persist("settings");rerenderKeep();toast(so.checked?"Simple mode is on.":"Simple mode is off – choose the extras to show.")};
+ all("[data-extra]",el=>el.onchange=()=>{settings.extras=Object.assign({},settings.extras,{[el.dataset.extra]:el.checked});persist("settings")});
+}
+function actModes(x){
+ if(x==="practice"){if(PRACTICE){toast("You’re already in a practice cycle.");return true}practiceIntro();return true}
+ if(x==="practiceexit"){location.reload();return true}
+ if(PRACTICE&&["spbackup","backup","sample","rmsample","newyear","termreport","csv","pinset"].includes(x)){toast("That’s switched off in a practice cycle. Exit practice first.",4000);return true}
+ return false;
+}
+
+/* =====================================================================
    SHAREPOINT SAVING (synced folder via File System Access API + web link)
    ===================================================================== */
 const fsSupported=()=>{try{return typeof window.showDirectoryPicker==="function"&&window.self===window.top}catch(e){return false}};
@@ -2491,15 +2587,16 @@ function recordFilename(d){return `${d.date||today()} ${cleanName(d.teacher)||"T
 function cardFilename(d){return `${d.date||today()} ${cleanName(d.teacher)||"Teacher"} – action card.html`}
 function convFilename(d){return `${d.date||today()} ${cleanName(d.teacher)||"Teacher"} – coaching conversation.html`}
 async function saveToSharePoint(d){
+ if(PRACTICE){toast("Nothing is saved to SharePoint in a practice cycle. Try the download buttons instead.",5000);return}
  if(!d.teacher||!d.teacher.trim()){showModal(`<h2>Add the teacher’s name first</h2><p>The teacher’s name is used for the SharePoint folder. Add it in step 1 (Context).</p><div class="row"><button class="btn hi" data-mclose data-goStep1>Go to step 1</button><button class="btn alt" data-mclose>Cancel</button></div>`);
   const b=$("#modal [data-goStep1]");if(b)b.addEventListener("click",()=>{step=1;setView("debrief")});return}
  storeLocal(d,true);
  const html=standalone(`${d.teacher} – coaching conversation`,planSheet(d),d);
  const teacher=cleanName(d.teacher), link=spTeacherLink(d.teacher);
- const planName=convFilename(d).replace(/\.html$/,".docx"),cardName=cardFilename(d).replace(/\.html$/,".docx");
- const planDoc=DOCX.build(planSheet(d),`${d.teacher} – coaching conversation`,d),cardDoc=DOCX.build(actionCardSheet(d),`${d.teacher} – action card`);
+ const planName=convFilename(d).replace(/\.html$/,".docx"),cardName=cardDocFor(d).name;
+ const planDoc=DOCX.build(planSheet(d),`${d.teacher} – coaching conversation`,d),cardDoc=DOCX.build(cardDocFor(d).html,cardDocFor(d).title);
  const FILES=[[planName,planDoc],[cardName,cardDoc]];
- const writeAll=async()=>{const r=await writeTo([teacher],planName,planDoc);const r2=await writeTo([teacher],cardName,cardDoc);r.renamed=r.renamed||r2.renamed;return r};
+ const writeAll=async()=>{const r=await writeTo([teacher],planName,planDoc);const r2=await writeTo([teacher],cardName,cardDoc);for(const m of membersOf(d)){try{const md=asMember(d,m);await writeTo([cleanName(m)],cardFilename(md).replace(/\.html$/,".docx"),DOCX.build(actionCardSheet(md),`${m} – action card`))}catch(e){console.warn("member card",m,e)}}r.renamed=r.renamed||r2.renamed;return r};
  const markSp=(how)=>{const s=saved.find(x=>x.id===d.id);if(s){s.spSaved=(how||"saved")+" "+new Date().toLocaleDateString();persist("saved")}};
  if(fsSupported()){
   await loadRoot();
@@ -2835,7 +2932,7 @@ if(!settings.helpSeen)setTimeout(showHelp,300);
 function render(){
  const a=$("#app"), y=window.scrollY;
  const V={home:homeHTML,debrief:debriefHTML,library:libraryHTML,tech:()=>T[curTech]?techHTML(curTech):libraryHTML(),edit:editHTML,saved:savedHTML,progress:progressHTML,settings:settingsHTML,more:moreHTML,resources:resourcesPage,walk:walkHTML,agree:agreeHTML};
- a.innerHTML=isLocked()&&viewNeedsPin()?lockHTML():(V[view]||homeHTML)();
+ a.innerHTML=(PRACTICE?practiceBarHTML():"")+(isLocked()&&viewNeedsPin()?lockHTML():(V[view]||homeHTML)());
  bind();
  if(view==="debrief"&&step===0)window.scrollTo(0,y);
 }
@@ -2936,11 +3033,12 @@ function bind(){
  // patterns
  const pf=$("#pFrom"),pt=$("#pTo"),pn=$("#pNames");
  if(pf)pf.onchange=()=>{patFilter.from=pf.value;render()}; if(pt)pt.onchange=()=>{patFilter.to=pt.value;render()}; if(pn)pn.onchange=()=>{patFilter.names=pn.checked};
- bindMore(all);bindAlign(all);bindExtra(all);
+ bindMore(all);bindAlign(all);bindExtra(all);bindModes(all);
  all("[data-agreefor]",b=>b.onclick=()=>{agreeT=b.dataset.agreefor;setView("agree")});
  all("[data-act]",b=>b.onclick=()=>act(b.dataset.act));
 }
 async function act(x){
+ if(actModes(x))return;
  if(actExtra(x))return;
  if(actMore(x))return;
  if(actAlign(x))return;
