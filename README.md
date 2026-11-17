@@ -10,4 +10,4 @@ All coaching notes stay on the coach's own device and in their own SharePoint fo
 
 ## Also hosted here
 
-- **VC Curriculum Audit** – audit teaching sequences and VCAA curriculum area maps against Victorian Curriculum 2.0: https://samuelkerr48-sm.github.io/Blueprint/curriculum-audit/ (folder `curriculum-audit/`, its own installable app and service worker; Blueprint's service worker leaves that folder alone).
+- **VC Curriculum Audit** has moved to its own repo and address: https://samuelkerr48-sm.github.io/vc-audit/ (the `curriculum-audit/` folder here only redirects; Blueprint's service worker still leaves that folder alone).
