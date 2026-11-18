@@ -428,6 +428,8 @@ input[type=range],input[type=checkbox],input[type=radio],progress{accent-color:v
 .practicebar{background:#FFF7E8;border:2px dashed #E0A93B;border-radius:12px;padding:10px 14px;margin-bottom:14px}
 .simplenote{background:var(--b50);border:1px solid var(--b200);border-radius:10px;padding:10px 12px;margin:10px 0;font-size:14px}
 .stale{color:#9A3412}.latec{color:#9b1c1c}
+.rocard{background:#FFF7E8;border:1px solid #F3D9A4;border-radius:10px;padding:10px 14px;font-size:14px;margin-top:8px}
+.evaldisc{background:var(--b50);border:1px solid var(--b200);border-left:4px solid var(--navy);border-radius:0;padding:10px 14px;font-size:14px;margin:8px 0}
 
 </style>
 <link rel="manifest" href="manifest.webmanifest">
@@ -2113,7 +2115,7 @@ function stagesHTML(){
 }
 
 /* ---------- agreement ---------- */
-const AGREE_ITEMS=[["growth","Coaching is for professional growth, not evaluation"],["pdp","Coaching notes and observations stay separate from PDP and performance processes"],["confid","What we discuss stays between us unless we agree to share it"],["video","Video of practice may be used – the teacher decides how it’s used and shared"]];
+const AGREE_ITEMS=[["growth","Coaching is for professional growth, not evaluation"],["pdp","Coaching notes and observations stay separate from PDP and performance processes"],["confid","What we discuss stays between us unless we agree to share it"],["leaders","School leaders can read a copy of our coaching records (teacher names coded), but not the coach’s private reflections. The records will not be used to evaluate the teacher."],["video","Video of practice may be used – the teacher decides how it’s used and shared"]];
 function agreeBlank(t){return {teacher:t,date:today(),coach:D.coach||settings.walker||"",items:{growth:true,pdp:true,confid:true,video:false},weeks:+settings.cycleWeeks||3,model:"one",meeting:"",review:3,priority:focusTech()?T[focusTech()].n:"",notes:"",reviews:[]}}
 function agreeHTML(){
  const t=agreeT||D.teacher;
@@ -2617,7 +2619,7 @@ async function connectLeaderFolder(kind){
 function shareSettingsHTML(){
  if(!fsSupported())return `<div class="card" style="margin-top:14px"><h2>Sharing with school leaders</h2><p class="small muted" style="margin:0">Open Blueprint in Edge or Chrome on a computer to share records with leaders through a SharePoint folder.</p></div>`;
  return `<div class="card" style="margin-top:14px"><h2>Sharing with school leaders</h2>
- <p class="small muted" style="margin-top:0">Each coach sends a privacy-safe copy of their records to a shared SharePoint folder, and leaders read every coach’s latest copy at once. Coach reflections are never shared.</p>
+ <p class="small muted" style="margin-top:0">Each coach sends a privacy-safe copy of their records to a shared SharePoint folder, and leaders read every coach’s latest copy at once. Leaders can read each shared coaching record (read-only); coach reflections are never shared. Shared records will not be used to evaluate a teacher.</p>
  <div class="ldgrid"><div><label class="f">Your name (as leaders will see it)</label><input class="t" id="coachName" value="${esc(settings.coachName||myCoachName())}" placeholder="e.g. Sam Kerr"></div></div>
  <h3 style="margin-top:12px">I’m a coach</h3>
  <div class="row"><span class="small" id="shareOut">${settings.sharedAt?`Last shared ${esc(new Date(settings.sharedAt).toLocaleString())}`:"Not connected"}</span><span class="spacer"></span><button class="btn alt sm" data-act="shareconnect">Choose my leaders’ folder…</button><button class="btn alt sm" data-act="sharenow">Share now</button></div>
@@ -2645,19 +2647,21 @@ function coachRow(coach,list,walkList,ags,updated,isYou){
 function coachRows(){
  const rows=[];
  if(saved.some(s=>!s.sample)||walks.length)rows.push(coachRow(myCoachName()||"You",saved.filter(s=>!s.sample),walks,Object.keys(agreements).length,today(),true));
- schoolView.forEach(b=>rows.push(coachRow(b.coach,b.saved||[],b.walks||[],(b.agreements||[]).length,(b.exported||b.added||"").slice(0,10),false)));
+ schoolView.forEach(b=>rows.push(Object.assign(coachRow(b.coach,b.saved||[],b.walks||[],(b.agreements||[]).length,(b.exported||b.added||"").slice(0,10),false),{key:b.key})));
  return rows;
 }
 function coachesTabHTML(){
+ if(leaderCoach&&leaderRec)return leaderRecHTML();
+ if(leaderCoach)return leaderCoachHTML();
  const R=coachRows();
  const tot=k=>R.reduce((a,r)=>a+(r[k]||0),0);
  const stale=r=>!r.isYou&&r.updated&&daysBetween(r.updated,today())>14;
- return `<h1>Coaches</h1>${schoolView.some(b=>b.sample)?`<div class="card samplebar"><b>Sample coaches are loaded.</b> <span class="small">The 24 coaches and their records are made up, for trying the leader view.</span><span class="spacer"></span><button class="btn alt sm" data-act="rmsamplecoaches">Remove sample coaches</button></div>`:""}<p class="lead">One row per coach, from each coach’s latest shared copy. Teacher-level detail stays with the coach.</p>
+ return `<h1>Coaches</h1>${schoolView.some(b=>b.sample)?`<div class="card samplebar"><b>Sample coaches are loaded.</b> <span class="small">The 24 coaches and their records are made up, for trying the leader view.</span><span class="spacer"></span><button class="btn alt sm" data-act="rmsamplecoaches">Remove sample coaches</button></div>`:""}<p class="lead">One row per coach, from each coach’s latest shared copy. Select a coach to read their coaching records.</p><div class="evaldisc"><b>Not for evaluation.</b> Coaching records are shared so leaders can support coaching and plan professional learning. They will not be used to evaluate a teacher, in performance and development (PDP) or any other process.</div>
  ${schoolBarHTML()}
  <div class="row" style="margin-bottom:14px"><label class="f" style="margin:0">From</label><input class="t" type="date" id="pFrom" value="${esc(patFilter.from)}" style="width:auto"><label class="f" style="margin:0">To</label><input class="t" type="date" id="pTo" value="${esc(patFilter.to)}" style="width:auto"></div>
  ${R.length?`<div class="kgrid" style="margin-bottom:14px">${[[R.length,"coaches"],[tot("cycles"),"coaching cycles"],[tot("teachers"),"teachers coached"],[tot("agreements"),"agreements in place"],[tot("late"),"overdue follow-ups"],[tot("walks"),"learning walk visits"]].map(([v,l])=>`<div class="kbox"><div class="kpi">${v}</div><div class="small muted">${l}</div></div>`).join("")}</div>
  <div class="card" style="overflow-x:auto"><table class="mini"><tr><th>Coach</th><th>Updated</th><th>Cycles</th><th>Teachers</th><th>Agreements</th><th>Overdue follow-ups</th><th>Secure at follow-up</th><th>Walk visits</th></tr>
- ${R.sort((a,b)=>a.isYou?-1:b.isYou?1:a.coach.localeCompare(b.coach)).map(r=>`<tr><td><b>${esc(r.coach)}</b>${r.isYou?` <span class="pill">you</span>`:""}</td><td class="${stale(r)?"stale":""}">${esc(r.updated||"–")}${stale(r)?" ⚠":""}</td><td>${r.cycles}</td><td>${r.teachers}</td><td>${r.agreements}</td><td>${r.late?`<b class="latec">${r.late}</b>`:"0"}</td><td>${r.secure==null?"–":r.secure+"% <span class='muted small'>("+r.ratings+")</span>"}</td><td>${r.walks}</td></tr>`).join("")}</table>
+ ${R.sort((a,b)=>a.isYou?-1:b.isYou?1:a.coach.localeCompare(b.coach)).map(r=>`<tr><td>${r.isYou?`<b>${esc(r.coach)}</b> <span class="pill">you</span>`:`<a href="#" data-leadercoach="${esc(r.key)}"><b>${esc(r.coach)}</b></a>`}</td><td class="${stale(r)?"stale":""}">${esc(r.updated||"–")}${stale(r)?" ⚠":""}</td><td>${r.cycles}</td><td>${r.teachers}</td><td>${r.agreements}</td><td>${r.late?`<b class="latec">${r.late}</b>`:"0"}</td><td>${r.secure==null?"–":r.secure+"% <span class='muted small'>("+r.ratings+")</span>"}</td><td>${r.walks}</td></tr>`).join("")}</table>
  <p class="small muted" style="margin:8px 0 0">⚠ not updated for more than two weeks. Cycles, teachers and walks count the dates above; agreements and overdue follow-ups are as of today.</p></div>
  <div class="row" style="margin-top:12px"><button class="btn alt" data-tab="patterns">Whole-school patterns</button><button class="btn hi" data-act="termreport">Download term report (Word)</button></div>`
  :`<div class="card"><p style="margin:0">No coaches loaded yet. Connect the leaders’ folder in Settings › Sharing with school leaders, or add coaches’ files above.</p></div>`}`;
@@ -2676,10 +2680,13 @@ function schoolBarHTML(){
 
 /* ---- events ---- */
 function bindSchool(all){
+ bindLeader(all);
  const cn=$("#coachName");if(cn)cn.onchange=()=>{settings.coachName=cn.value.trim();persist("settings")};
  const sn=$("#shareNames");if(sn)sn.onchange=()=>{settings.shareNames=sn.checked;persist("settings");shareToSchool(true)};
 }
 function actSchool(x){
+ if(x==="leaderback"){leaderCoach=null;leaderRec=null;rerenderKeep();return true}
+ if(x==="leaderrecback"){leaderRec=null;rerenderKeep();return true}
  if(x==="samplecoaches"){if(PRACTICE){toast("Exit practice first.");return true}loadSampleCoaches();return true}
  if(x==="rmsamplecoaches"){removeSampleCoaches();return true}
  if(x==="shareconnect"){connectLeaderFolder("out");return true}
@@ -2711,6 +2718,33 @@ function loadSampleCoaches(){
  saveSchool();schoolOn=true;teachTab="coaches";setView("saved");toast("24 sample coaches loaded. They’re made up – remove them with “Remove sample coaches”.",6000);
 }
 function removeSampleCoaches(){schoolView=schoolView.filter(b=>!b.sample);saveSchool();schoolOn=schoolView.length>0;if(!schoolView.length&&teachTab==="coaches")teachTab="patterns";render();toast("Sample coaches removed.")}
+
+/* ---- leaders: read-only records (preview) ---- */
+let leaderCoach=null,leaderRec=null;
+function coachBlock(key){return schoolView.find(b=>b.key===key)}
+function leaderCoachHTML(){
+ const b=coachBlock(leaderCoach);if(!b){leaderCoach=null;return coachesTabHTML()}
+ const byT={};(b.saved||[]).map(norm).forEach(s=>{(byT[tKey(s)]=byT[tKey(s)]||[]).push(s)});
+ return `<div class="row"><button class="btn alt sm" data-act="leaderback">← All coaches</button></div>
+ <h1 style="margin-top:10px">${esc(b.coach)}’s coaching records</h1>
+ <div class="evaldisc"><b>Not for evaluation.</b> Coaching records are shared so leaders can support coaching and plan professional learning. They will not be used to evaluate a teacher, in performance and development (PDP) or any other process.</div>
+ <div class="rocard"><b>Read-only.</b> Shared by ${esc(b.coach)} on ${esc((b.exported||"").slice(0,10))}. Teachers appear as codes unless the coach chose to share names. Coach reflections are never shared.</div>
+ ${Object.keys(byT).sort().map(t=>{const L=byT[t].sort((a,b)=>(a.date||"").localeCompare(b.date||""));return `<div class="card" style="margin-top:12px"><div class="row"><h3 style="margin:0">${esc(t)}</h3><span class="small muted">${L.length} cycle${L.length>1?"s":""}</span><span class="spacer"></span><span class="pill ${dueInfo(L).cls}">${esc(dueInfo(L).txt)}</span></div>
+  <table class="mini" style="margin-top:8px"><tr><th>Date</th><th>Goal</th><th>Action step</th><th>Latest rating</th><th></th></tr>${L.map(s=>{const g=(s.goals||[]).find(x=>x.id===s.goal);const ch=(s.chosen||[]).filter(id=>T[id]);
+   return `<tr><td>${esc(s.date||"")}</td><td>${esc(g?g.text:"–")}</td><td>${ch.map(id=>esc(T[id].n)).join(", ")||"–"}</td><td>${ch.map(id=>latestLevel(s,id)?levelName(latestLevel(s,id)):"").filter(Boolean).join(", ")||"–"}</td><td><button class="btn alt sm" data-leaderrec="${esc(s.id)}">Open</button></td></tr>`}).join("")}</table></div>`}).join("")||`<div class="card"><p style="margin:0">No coaching cycles shared yet.</p></div>`}`;
+}
+function leaderRecHTML(){
+ const b=coachBlock(leaderCoach),s=b&&(b.saved||[]).find(x=>x.id===leaderRec);if(!s){leaderRec=null;return leaderCoachHTML()}
+ const d=norm(JSON.parse(JSON.stringify(s)));
+ return `<div class="row"><button class="btn alt sm" data-act="leaderrecback">← ${esc(b.coach)}’s records</button></div>
+ <div class="evaldisc" style="margin-top:10px"><b>Not for evaluation.</b> Coaching records are shared so leaders can support coaching and plan professional learning. They will not be used to evaluate a teacher, in performance and development (PDP) or any other process.</div>
+ <div class="rocard" style="margin-top:10px"><b>Read-only coaching record.</b> ${esc(tKey(d))} · ${esc(d.date||"")} · coach ${esc(b.coach)}. For professional growth – not for performance review or PDP.</div>
+ <div class="card ps" style="margin-top:12px">${(()=>{const h=planSheet(d),parts=h.split('<div class="page">');return parts.length>2?parts[0]+'<div class="page">'+parts[1]:h})()}</div>`;
+}
+function bindLeader(all){
+ all("[data-leadercoach]",x=>x.onclick=e=>{e.preventDefault();leaderCoach=x.dataset.leadercoach;leaderRec=null;window.scrollTo(0,0);rerenderKeep()});
+ all("[data-leaderrec]",x=>x.onclick=()=>{leaderRec=x.dataset.leaderrec;window.scrollTo(0,0);rerenderKeep()});
+}
 
 /* =====================================================================
    SHAREPOINT SAVING (synced folder via File System Access API + web link)
