@@ -991,6 +991,7 @@ function moreHTML(){
   <button class="tile" data-act="spbackup"><b>Back up now</b><span>Save a copy of everything to your SharePoint coaching folder (or download it)</span></button>
   <button class="tile" data-act="walkstart"><b>Learning walk</b><span>Short visits across many rooms, added to the school’s patterns</span></button>
   <button class="tile" data-act="practice"><b>Practice cycle</b><span>For professional learning: a guided cycle with a made-up lesson. Nothing is saved</span></button>
+  <button class="tile" data-act="whatsnew"><b>What’s new</b><span>Recent changes to Blueprint</span></button>
   <button class="tile" data-act="samplecoaches"><b>Try the leader view</b><span>Load 24 made-up coaches to see the Coaches tab and whole-school patterns</span></button>
   <button class="tile" data-act="termreportgo"><b>Term report</b><span>A Word summary of coaching, growth and learning walks for leaders</span></button>
   ${saved.some(s=>s.sample)?`<button class="tile" data-act="rmsample"><b>Remove sample data</b><span>Delete the made-up practice teachers</span></button>`:`<button class="tile" data-act="sample"><b>Practice with sample teachers</b><span>Load three made-up teachers to explore progress and patterns – great for PL</span></button>`}
@@ -1511,6 +1512,7 @@ function settingsHTML(){
   </div>
  </div>
  ${sheetSettingsHTML()}
+ ${playbookSettingsHTML()}
  ${shareSettingsHTML()}
  ${pinSettingsHTML()}
  <div class="card" style="margin-top:14px"><h2>Cycle length</h2><p class="small muted" style="margin-top:0">The default time between cycles. Follow-up dates are set from it, and Blueprint flags cycles that come too often. A teacher’s coaching agreement can set their own.</p><div class="row"><input class="t" type="number" min="1" max="10" id="cycleWeeks" value="${+settings.cycleWeeks||3}" style="width:90px"><span>weeks</span></div></div>
@@ -2483,7 +2485,7 @@ if(settings.simple===undefined||(settings.simple&&!settings.simpleChosen)){setti
 const SIMPLE_NOTE=`<div class="simplenote"><b>Prefer a simpler screen?</b> Simple mode shows only the core path – agreement, observe, goal, technique, rehearse and follow up – and hides the extras. You can switch it on or off any time in More › Settings.<div class="row" style="margin-top:8px"><button class="btn alt sm" id="simpleTry">Turn on Simple mode</button></div></div>`;
 function bindSimpleNote(){const b=$("#simpleTry");if(b)b.onclick=()=>{settings.simple=true;settings.simpleChosen=true;persist("settings");hideModal();render();toast("Simple mode is on. Turn it off in More › Settings.",5000)}}
 function simpleNotice(){showModal(`<h2>New: Simple mode</h2>${SIMPLE_NOTE}<div class="row" style="margin-top:12px"><span class="spacer"></span><button class="btn hi" data-mclose>Keep everything</button></div>`);bindSimpleNote();settings.simpleNoticeSeen=true;persist("settings")}
-if(settings.helpSeen&&!settings.simpleNoticeSeen)setTimeout(()=>{if(!$("#modal")||$("#modal").style.display!=="flex")simpleNotice()},500);
+
 const extraOn=k=>!settings.simple&&(settings.extras||{})[k]!==false;
 function simpleSettingsHTML(){
  return `<div class="card" style="margin-top:14px"><h2>Simple mode</h2><p class="small muted" style="margin-top:0">Simple mode shows only the core path: agreement, observe, goal, technique, rehearse and follow up. Turn it off to choose which extras to show. Nothing already recorded is lost either way.</p>
@@ -2768,6 +2770,107 @@ function leaderRecHTML(){
 function bindLeader(all){
  all("[data-leadercoach]",x=>x.onclick=e=>{e.preventDefault();leaderCoach=x.dataset.leadercoach;leaderRec=null;window.scrollTo(0,0);rerenderKeep()});
  all("[data-leaderrec]",x=>x.onclick=()=>{leaderRec=x.dataset.leaderrec;window.scrollTo(0,0);rerenderKeep()});
+}
+
+/* =====================================================================
+   SHARED SCHOOL PLAYBOOK · WHAT'S NEW
+   ===================================================================== */
+
+/* ---------- shared school playbook ---------- */
+const PB_FILE="Blueprint school playbook.json";
+function playbookData(){
+ return {app:"coaching-debrief-playbook",kind:"school-playbook",version:APP_VERSION,published:new Date().toISOString(),by:myCoachName()||"Lead coach",
+  school:settings.school||"",schoolLogo:settings.schoolLogo||"",theme:settings.theme||null,schoolFocus:settings.schoolFocus||null,cycleWeeks:settings.cycleWeeks||null,
+  playbook:settings.playbook||[],custom,edits,nuances,videos};
+}
+async function publishPlaybook(){
+ if(PRACTICE){toast("Exit practice first.");return}
+ try{const h=await kv("get","playbookOut");if(!h){return connectPlaybook("out")}
+  if(!(await permitted(h,true))){toast("Blueprint needs permission to write to that folder.");return}
+  const fh=await h.getFileHandle(PB_FILE,{create:true}),w=await fh.createWritable({keepExistingData:false});await w.write(new Blob([JSON.stringify(playbookData())],{type:"application/json"}));await w.close();
+  settings.pbPublished=Date.now();persist("settings");rerenderKeep();toast(`School playbook published to ${esc(h.name)}. Coaches get it next time they open Blueprint.`,6000);
+ }catch(e){console.warn(e);toast("Couldn’t publish to that folder. Check it’s synced and you can edit it.",6000)}
+}
+async function downloadPlaybook(){await download(PB_FILE,new Blob([JSON.stringify(playbookData())],{type:"application/json"}),"application/json");toast("Playbook file downloaded. Coaches can load it in Settings.")}
+function pbSummary(p){
+ const n=Object.keys(p.custom||{}).length,e=Object.keys(p.edits||{}).length,nu=Object.keys(p.nuances||{}).filter(k=>[].concat(p.nuances[k]||[]).length).length,v=Object.keys(p.videos||{}).length;
+ return [`${(p.playbook||[]).length} playbook techniques`,n?`${n} school-added`:"",e?`${e} edited`:"",nu?`${nu} with school tweaks`:"",v?`${v} videos`:"",p.schoolFocus&&p.schoolFocus.id&&T[p.schoolFocus.id]?`school focus: ${T[p.schoolFocus.id].n}`:""].filter(Boolean).join(" · ");
+}
+function applyPlaybook(p,quiet){
+ if(!p||p.kind!=="school-playbook"){toast("That isn’t a Blueprint school playbook file.");return false}
+ if(settings.pbApplied&&settings.pbApplied>=p.published){if(!quiet)toast("You already have the latest school playbook.");return false}
+ const prevSchool=new Set(settings.pbKeys||[]);
+ // school-added techniques: replace the ones that came from the school, keep the coach's own
+ Object.keys(custom).forEach(k=>{if(prevSchool.has(k)&&!(k in (p.custom||{})))delete custom[k]});
+ Object.assign(custom,p.custom||{});
+ Object.keys(edits).forEach(k=>{if(prevSchool.has("e:"+k)&&!(k in (p.edits||{})))delete edits[k]});Object.assign(edits,p.edits||{});
+ Object.assign(nuances,p.nuances||{});Object.assign(videos,p.videos||{});
+ settings.playbook=[...new Set((p.playbook||[]))];
+ if(p.schoolFocus!==undefined)settings.schoolFocus=p.schoolFocus;
+ if(p.cycleWeeks)settings.cycleWeeks=p.cycleWeeks;
+ if(p.school)settings.school=p.school;if(p.schoolLogo)settings.schoolLogo=p.schoolLogo;if(p.theme)settings.theme=p.theme;
+ settings.pbKeys=Object.keys(p.custom||{}).concat(Object.keys(p.edits||{}).map(k=>"e:"+k));
+ settings.pbApplied=p.published;settings.pbBy=p.by;
+ ["custom","edits","videos","nuance","settings"].forEach(persist);rebuild();applyBranding();render();
+ toast(`School playbook updated from ${esc(p.by||"your lead coach")} – ${esc(pbSummary(p))}.`,7000);return true;
+}
+async function checkPlaybook(ask){
+ try{const h=await kv("get","playbookIn");if(!h)return;if(!(await permitted(h,!!ask))){if(ask)toast("Blueprint needs permission to read that folder.");return}
+  let fh;try{fh=await h.getFileHandle(PB_FILE)}catch(e){if(ask)toast("No school playbook has been published to that folder yet.");return}
+  const p=JSON.parse(await (await fh.getFile()).text());settings.pbChecked=Date.now();persist("settings");
+  if(applyPlaybook(p,!ask)===false&&ask)rerenderKeep();
+ }catch(e){console.warn(e);if(ask)toast("Couldn’t read the school playbook.")}
+}
+async function connectPlaybook(kind){
+ try{const h=await window.showDirectoryPicker({id:kind==="out"?"cdp-pbout":"cdp-pbin",mode:kind==="out"?"readwrite":"read"});await kv("put",kind==="out"?"playbookOut":"playbookIn",h);
+  if(kind==="out")await publishPlaybook();else await checkPlaybook(true);rerenderKeep()}catch(e){if(e&&e.name!=="AbortError")toast("That folder couldn’t be connected.")}
+}
+function playbookSettingsHTML(){
+ const fs=fsSupported();
+ return `<div class="card" style="margin-top:14px"><h2>Shared school playbook</h2>
+ <p class="small muted" style="margin-top:0">One lead coach publishes the school playbook – playbook techniques, edited and school-added techniques, “where you can adapt” tweaks, videos, the school focus, cycle length, logo and colours – and every coach’s Blueprint picks it up. Coaches’ own extra techniques are kept.</p>
+ ${settings.pbApplied?`<div class="pill" style="margin-bottom:8px">Using the school playbook from ${esc(settings.pbBy||"your lead coach")} · ${esc(new Date(settings.pbApplied).toLocaleDateString())}</div>`:""}
+ <h3 style="margin-top:6px">I’m a coach</h3>
+ <div class="row">${fs?`<button class="btn alt sm" data-act="pbconnect">Connect the school playbook folder…</button><button class="btn alt sm" data-act="pbcheck">Check for updates</button>`:""}<label class="btn alt sm" style="display:inline-block">Load a playbook file<input type="file" accept=".json" id="pbFile" style="display:none"></label></div>
+ <p class="small muted" style="margin:6px 0 0">Once connected, Blueprint checks for a newer playbook each time it opens.</p>
+ <h3 style="margin-top:14px">I’m the lead coach</h3>
+ <div class="row"><span class="small">${settings.pbPublished?`Last published ${esc(new Date(settings.pbPublished).toLocaleString())}`:"Not published yet"}</span><span class="spacer"></span>${fs?`<button class="btn hi sm" data-act="pbpublish">Publish the school playbook</button>`:""}<button class="btn alt sm" data-act="pbdownload">Download as a file</button></div>
+ <details style="margin-top:10px"><summary class="small"><b>Setting up the folder</b></summary><ol class="small"><li>Make a SharePoint folder called <b>School coaching – playbook</b>.</li><li>Give the lead coach <b>Edit</b> and every other coach <b>Read</b>.</li><li>Everyone adds a shortcut to it (or syncs it). The lead coach connects it with Publish; coaches connect it with “Connect the school playbook folder”.</li></ol></details></div>`;
+}
+setTimeout(()=>{if(!PRACTICE&&fsSupported())checkPlaybook(false)},1200);
+
+/* ---------- what's new ---------- */
+const WHATS_NEW=[
+ ["2026-11-24","Shared school playbook",["A lead coach can publish the school playbook – techniques, school tweaks, videos, school focus and colours – and every coach’s Blueprint picks it up (Settings › Shared school playbook).","This “What’s new” note after each update. Find it again any time in More › What’s new."]],
+ ["2026-11-20","Delete a conversation",["Delete a conversation in progress from the Home card or the Delete button at the top of the conversation, with Undo."]],
+ ["2026-11-18","Leader view",["Coaches can share their records with leaders through a SharePoint folder (Settings › Sharing with school leaders).","Leaders get a Coaches tab – one row per coach – and can read each coach’s records, read-only. They will not be used to evaluate a teacher.","Try it with made-up data: More › Try the leader view."]],
+ ["2026-11-17","Simple mode, groups and practice",["Simple mode hides the extras (Settings › Simple mode).","Small-group and team cycles with an action card for each member.","Practice cycle for professional learning – nothing is saved."]],
+ ["2026-11-16","The department’s coaching cycle",["Every cycle starts with the coaching agreement, then Identify, Learn, and Implement and improve.","Key-ingredients checklists for rehearsal, observation and self-review.","Help (?) on every screen, a Home button, PIN lock, automatic backups and New school year."]]
+];
+function whatsNewHTML(list){
+ return list.map(([d,t,items])=>`<h3 style="margin:12px 0 4px">${esc(t)} <span class="small muted">· ${esc(new Date(d+"T00:00:00").toLocaleDateString("en-AU",{day:"numeric",month:"long",year:"numeric"}))}</span></h3><ul class="small" style="margin:0">${items.map(i=>`<li>${esc(i)}</li>`).join("")}</ul>`).join("");
+}
+function showWhatsNew(all){
+ const seen=settings.newsSeen||"",list=all?WHATS_NEW:WHATS_NEW.filter(n=>n[0]>seen).slice(0,seen?99:2);
+ const simple=!settings.simpleNoticeSeen&&!settings.simple;
+ showModal(`<h2>What’s new in Blueprint</h2>${whatsNewHTML(list.length?list:WHATS_NEW.slice(0,1))}${simple?SIMPLE_NOTE:""}
+ <div class="row" style="margin-top:14px">${all?"":`<button class="btn ghost sm" data-act="newsall">See all updates</button>`}<span class="spacer"></span><button class="btn hi" data-mclose>Got it</button></div>`);
+ if(simple)bindSimpleNote();
+ settings.newsSeen=WHATS_NEW[0][0];settings.simpleNoticeSeen=true;persist("settings");
+}
+if(!settings.helpSeen){settings.newsSeen=WHATS_NEW[0][0];persist("settings")}
+else if((settings.newsSeen||"")<WHATS_NEW[0][0])setTimeout(()=>{if(!$("#modal")||$("#modal").style.display!=="flex")showWhatsNew(false)},600);
+
+/* ---------- events ---------- */
+function bindShared(all){const f=$("#pbFile");if(f)f.onchange=async()=>{if(!f.files[0])return;try{applyPlaybook(JSON.parse(await readFile(f.files[0])),false)}catch(e){toast("That isn’t a Blueprint school playbook file.")}f.value=""}}
+function actShared(x){
+ if(x==="pbpublish"){publishPlaybook();return true}
+ if(x==="pbdownload"){downloadPlaybook();return true}
+ if(x==="pbconnect"){connectPlaybook("in");return true}
+ if(x==="pbcheck"){kv("get","playbookIn").then(h=>h?checkPlaybook(true):connectPlaybook("in"));return true}
+ if(x==="whatsnew"){showWhatsNew(true);return true}
+ if(x==="newsall"){showWhatsNew(true);return true}
+ return false;
 }
 
 /* =====================================================================
@@ -3255,13 +3358,14 @@ function bind(){
  // patterns
  const pf=$("#pFrom"),pt=$("#pTo"),pn=$("#pNames");
  if(pf)pf.onchange=()=>{patFilter.from=pf.value;render()}; if(pt)pt.onchange=()=>{patFilter.to=pt.value;render()}; if(pn)pn.onchange=()=>{patFilter.names=pn.checked};
- bindMore(all);bindAlign(all);bindExtra(all);bindModes(all);bindSchool(all);
+ bindMore(all);bindAlign(all);bindExtra(all);bindModes(all);bindSchool(all);bindShared(all);
  all("[data-agreefor]",b=>b.onclick=()=>{agreeT=b.dataset.agreefor;setView("agree")});
  all("[data-act]",b=>b.onclick=()=>act(b.dataset.act));
 }
 async function act(x){
  if(actModes(x))return;
  if(actSchool(x))return;
+ if(actShared(x))return;
  if(actExtra(x))return;
  if(actMore(x))return;
  if(actAlign(x))return;
