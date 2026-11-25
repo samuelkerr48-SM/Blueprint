@@ -2965,7 +2965,14 @@ function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open("cdp-sa
 async function kv(op,key,val){try{const db=await idb();return await new Promise((res,rej)=>{const tx=db.transaction("kv",op==="get"?"readonly":"readwrite"),st=tx.objectStore("kv");const r=op==="get"?st.get(key):op==="del"?st.delete(key):st.put(val,key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}catch(e){return undefined}}
 async function loadRoot(){if(!spLoaded){spRoot=(await kv("get","root"))||null;spLoaded=true}return spRoot}
 async function permitted(h,ask){if(!h)return false;if(!h.queryPermission)return true;const o={mode:"readwrite"};if((await h.queryPermission(o))==="granted")return true;return ask?(await h.requestPermission(o))==="granted":false}
-async function connectFolder(){const h=await window.showDirectoryPicker({id:"cdp-coaching",mode:"readwrite"});spRoot=h;spLoaded=true;await kv("put","root",h);return h}
+async function connectFolder(){
+ // step 1: choose the folder (read access only, so a blocked "edit" permission can't cancel the choice)
+ let h;try{h=await window.showDirectoryPicker({id:"cdp-coaching",mode:"read"})}catch(e){e.step="pick";throw e}
+ spRoot=h;spLoaded=true;await kv("put","root",h);
+ // step 2: ask to save there
+ let p="prompt";try{p=await h.queryPermission({mode:"readwrite"});if(p!=="granted")p=await h.requestPermission({mode:"readwrite"})}catch(e){p="error:"+(e.name||e)}
+ if(p!=="granted"){const er=new Error("write");er.step="write";er.detail=p;er.folder=h.name;throw er}
+ return h}
 async function childDir(dir,name){const lower=name.toLowerCase();for await(const [n,h] of dir.entries()){if(h.kind==="directory"&&n.toLowerCase()===lower)return h}return dir.getDirectoryHandle(name,{create:true})}
 async function writeTo(segs,filename,content){
  if(!(await permitted(spRoot,true)))throw new Error("permission");
@@ -3026,11 +3033,14 @@ async function saveToSharePoint(d){
  const on=(q,f)=>{const b=mb.querySelector(q);if(b)b.onclick=f};
  on('[data-m="download"]',async()=>{for(const [n,c] of FILES){await download(n,c,n.endsWith(".docx")?"application/vnd.openxmlformats-officedocument.wordprocessingml.document":"text/html");await new Promise(r=>setTimeout(r,400))}markSp("file downloaded");hideModal();if(link)toast(`File downloaded. <a href="${esc(link)}" target="_blank" rel="noopener">Open ${esc(teacher)}’s folder</a> and drag them in.`,9000)});
  on('[data-m="connectsave"]',async()=>{const er=$("#mErr");er.style.color="";er.textContent=spRoot?"Saving…":"Opening the folder picker… (if you can’t see it, check behind this window or on another screen)";const t0=Date.now();
-  try{if(!spRoot)await connectFolder();er.textContent="Saving…";const r=await writeAll();markSp();hideModal();toast(`<b>Saved to SharePoint</b> – full plan and action card (Word)<br>${r.path.map(esc).join(" › ")}${link?`<br><a href="${esc(link)}" target="_blank" rel="noopener">Open ${esc(teacher)}’s folder</a>`:""}`,9000);render()}
+  try{if(!spRoot)await connectFolder();else if(!(await permitted(spRoot,true))){const x=new Error("write");x.step="write";x.detail="denied";x.folder=spRoot.name;throw x}
+   er.textContent="Saving…";const r=await writeAll();markSp();hideModal();toast(`<b>Saved to SharePoint</b> – full plan and action card (Word)<br>${r.path.map(esc).join(" › ")}${link?`<br><a href="${esc(link)}" target="_blank" rel="noopener">Open ${esc(teacher)}’s folder</a>`:""}`,9000);render()}
   catch(e){er.style.color="#b00020";console.warn("connectsave",e);
-   if(e.name==="AbortError")er.innerHTML=Date.now()-t0<800?"The folder picker didn’t open – your browser or school settings may be blocking folder access. Use <b>Download both files</b> for now, and check you’re in Edge or Chrome on a computer (not the claude.ai link, Teams or an iPad). If you are, ask IT whether <b>File System Access</b> is blocked in Edge.":"No folder was chosen. Try again and pick your coaching folder (e.g. “Blueprint Coaching”), not the teacher’s folder.";
+   if(e.step==="write"){er.innerHTML=`You chose <b>${esc(e.folder||"the folder")}</b>, but the browser didn’t let Blueprint save there (${esc(e.detail||"")}).<br>• If a box asked to <b>“Save changes”</b> or <b>“Allow editing”</b>, press the button below and choose <b>Allow</b> / <b>Edit files</b>.<br>• If no box appears, saving to folders is switched off on this computer – use <b>Download both files</b>, and ask IT whether the <b>File editing</b> (File System Access) permission is blocked in Edge for this site.<div class="row" style="margin-top:8px"><button class="btn alt sm" id="allowSave">Allow saving and try again</button></div>`;
+    const a=$("#allowSave");if(a)a.onclick=async()=>{try{const ok=await spRoot.requestPermission({mode:"readwrite"});if(ok==="granted"){er.style.color="";er.textContent="Saving…";const r=await writeAll();markSp();hideModal();toast(`<b>Saved to SharePoint</b><br>${r.path.map(esc).join(" › ")}`,8000);render()}else er.innerHTML="Still not allowed. Saving to folders looks to be blocked on this computer – use <b>Download both files</b> and ask IT."}catch(x){er.textContent="Still not allowed ("+(x.message||x.name)+"). Use Download both files."}}}
+   else if(e.name==="AbortError")er.innerHTML=Date.now()-t0<800?"The folder picker didn’t open – your browser or school settings may be blocking folder access. Use <b>Download both files</b> for now, and check you’re in Edge or Chrome on a computer (not the claude.ai link, Teams or an iPad). If you are, ask IT whether <b>File System Access</b> is blocked in Edge.":"The folder picker was closed without a folder being chosen. Try again: click your <b>Blueprint Coaching</b> folder once, then press <b>Select folder</b>. If a message said the folder “can’t be opened” or “contains system files”, choose a folder inside it.";
    else if(e.name==="SecurityError"||e.name==="NotAllowedError")er.innerHTML="The browser blocked access to that folder ("+esc(e.message||e.name)+"). If you picked OneDrive, Documents or Desktop itself, pick a folder inside it. Otherwise folder access may be switched off on this computer – use <b>Download both files</b>.";
-   else er.textContent=e.message==="permission"?"The browser didn’t allow saving there. Try again and choose Allow, or download instead.":"Couldn’t save there ("+(e.message||e.name)+"). Download instead."}});
+   else er.textContent="Couldn’t save there ("+(e.message||e.name)+"). Download instead."}});
  const g=mb.querySelector("[data-mgo]");if(g)g.onclick=e=>{e.preventDefault();hideModal();setView("settings")};
 }
 function storeLocal(d,quiet){const i=saved.findIndex(s=>s.id===d.id);const c=JSON.parse(JSON.stringify(d));if(i>=0){c.spSaved=saved[i].spSaved;saved[i]=c}else saved.push(c);const ok=LS.set(KEYS.saved,saved);markChanged();if(!quiet)toast(ok?"Conversation saved in this browser.":"Couldn’t save in this browser – use Save to SharePoint or download a backup.")}
@@ -3506,7 +3516,7 @@ async function act(x){
   delete custom[editing.id];delete videos[editing.id];delete moments[editing.id];persist("custom");persist("videos");persist("moments");D.chosen=D.chosen.filter(c=>c!==editing.id);editing=null;rebuild();persist("settings");setView("library");toast("Technique deleted.")}
  if(x==="backup")doBackup();
  if(x==="csv")csvExport();
- if(x==="connect"){try{await connectFolder();render()}catch(e){if(e.name!=="AbortError")toast("Couldn’t connect: "+esc(e.message))}}
+ if(x==="connect"){try{await connectFolder();render();toast("SharePoint folder connected.")}catch(e){if(e.step==="write"){render();toast(`Folder chosen, but the browser didn’t allow saving there (${esc(e.detail||"")}). Choose Allow when asked, or ask IT whether File editing is blocked in Edge.`,9000)}else if(e.name!=="AbortError")toast("Couldn’t connect: "+esc(e.message))}}
  if(x==="disconnect"){spRoot=null;await kv("del","root");render()}
  // observation
  if(x==="obstoggle"){const o=D.obs;if(o.startedAt){o.elapsed=obsElapsed();o.startedAt=null}else o.startedAt=Date.now();saveDraft();rerenderKeep()}
