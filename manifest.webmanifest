@@ -4,7 +4,7 @@
  "description": "Observe, debrief and plan the next step with teachers – aligned to VTLM 2.0.",
  "start_url": "./",
  "scope": "./",
- "id": "./",
+ "id": "/Blueprint/",
  "display": "standalone",
  "display_override": [
   "window-controls-overlay",
